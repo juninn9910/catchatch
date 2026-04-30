@@ -9,137 +9,115 @@
 *{margin:0;padding:0;box-sizing:border-box;}
 .vis-hidden{opacity:0!important;pointer-events:none!important;}
 body{
-  font-family:'Jua',sans-serif;
-  background:#0d2e1a;color:#f0ead6;
-  overflow:hidden;width:100vw;height:100vh;
-  position:relative;
-  user-select:none;-webkit-user-select:none;
-  touch-action:none;
+  font-family:'Jua',sans-serif;background:#000;color:#f5f0e0;
+  overflow:hidden;width:100vw;height:100vh;position:relative;
+  user-select:none;-webkit-user-select:none;touch-action:none;
 }
-#gameCanvas{position:absolute;top:0;left:0;width:100%;height:100%;z-index:1;}
-#videoEl{position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;pointer-events:none;}
 
-/* ── 씬 공통 ── */
+/* 카메라 풀스크린 배경 — AR의 핵심 */
+#cameraFull{
+  position:fixed;top:0;left:0;width:100%;height:100%;
+  object-fit:cover;transform:scaleX(-1);z-index:0;
+  background:#111;
+}
+
+/* 게임 오버레이 캔버스 — 카메라 위에 그려짐 */
+#gameCanvas{
+  position:fixed;top:0;left:0;width:100%;height:100%;
+  z-index:1;pointer-events:none;
+}
+
+/* UI 씬들 — 캔버스 위에 표시 */
 .scene{
-  position:absolute;top:0;left:0;width:100%;height:100%;z-index:10;
+  position:fixed;top:0;left:0;width:100%;height:100%;z-index:10;
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   transition:opacity 0.6s ease;
 }
 
-/* ── 씬1 ── */
-#sceneStart{background:linear-gradient(180deg,#2D5016 0%,#1f4a2a 45%,#1B6B6B 100%);}
-.title-wrap{text-align:center;margin-bottom:24px;animation:floatTitle 3s ease-in-out infinite;}
-.title-main{font-size:clamp(42px,9vw,74px);color:#f5f0e0;text-shadow:0 0 40px rgba(100,220,120,0.5);line-height:1.1;}
-.title-sub{font-size:clamp(15px,3.2vw,24px);color:#9fe8c0;margin-top:6px;}
+/* 씬1: 시작 — 카메라 보이도록 반투명 */
+#sceneStart{background:rgba(0,0,0,0.55);}
+.title-wrap{text-align:center;margin-bottom:20px;animation:floatTitle 3s ease-in-out infinite;}
+.title-main{font-size:clamp(40px,9vw,72px);color:#fff;text-shadow:0 0 30px rgba(100,220,120,0.6),0 4px 12px rgba(0,0,0,0.5);line-height:1.1;}
+.title-sub{font-size:clamp(14px,3vw,22px);color:#a0f0c0;margin-top:6px;text-shadow:0 2px 6px rgba(0,0,0,0.5);}
 @keyframes floatTitle{0%,100%{transform:translateY(0);}50%{transform:translateY(-10px);}}
-.cam-wrap{
-  width:min(190px,40vw);height:min(190px,40vw);
-  border-radius:50%;overflow:hidden;
-  border:4px solid #4dcea0;
-  box-shadow:0 0 0 8px rgba(77,206,160,0.15),0 0 50px rgba(77,206,160,0.3);
-  margin-bottom:16px;background:#0d2e1a;
-}
-#camPreview{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);}
-.hand-hint{font-size:clamp(15px,3.2vw,22px);color:#c8f0dc;text-align:center;padding:0 16px;animation:pulse 1.5s ease-in-out infinite;}
+.hand-hint{font-size:clamp(16px,3.5vw,24px);color:#c8f0dc;text-align:center;padding:0 16px;animation:pulse 1.5s ease-in-out infinite;text-shadow:0 2px 8px rgba(0,0,0,0.6);}
 @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
-.hand-detected-msg{font-size:clamp(16px,3.2vw,24px);color:#4dcea0;text-align:center;margin-top:8px;transition:opacity 0.3s;}
+.hand-detected-msg{font-size:clamp(18px,3.5vw,26px);color:#4dcea0;text-align:center;margin-top:10px;text-shadow:0 2px 8px rgba(0,0,0,0.6);transition:opacity 0.3s;}
+.ar-guide{font-size:clamp(13px,2.8vw,20px);color:rgba(255,255,255,0.6);text-align:center;margin-top:24px;text-shadow:0 2px 6px rgba(0,0,0,0.5);}
 
-/* ── 씬2 ── */
-#sceneDifficulty{background:linear-gradient(180deg,#2D5016 0%,#1f4a2a 50%,#1B6B6B 100%);padding:16px;}
-.diff-title{font-size:clamp(22px,5vw,36px);color:#f5f0e0;text-align:center;margin-bottom:4px;}
-.diff-record{font-size:clamp(12px,2.6vw,18px);color:#9fe8c0;text-align:center;margin-bottom:18px;font-family:'Nanum Gothic',sans-serif;}
+/* 씬2: 난이도 — 반투명 오버레이 */
+#sceneDifficulty{background:rgba(0,0,0,0.6);padding:16px;}
+.diff-title{font-size:clamp(22px,5vw,36px);color:#fff;text-align:center;margin-bottom:4px;text-shadow:0 2px 8px rgba(0,0,0,0.5);}
+.diff-record{font-size:clamp(12px,2.6vw,18px);color:#a0f0c0;text-align:center;margin-bottom:18px;font-family:'Nanum Gothic',sans-serif;}
 .diff-cards{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;width:100%;max-width:750px;}
 .diff-card{
-  background:rgba(255,255,255,0.07);border:3px solid rgba(77,206,160,0.3);
+  background:rgba(255,255,255,0.12);border:3px solid rgba(77,206,160,0.4);
   border-radius:22px;padding:20px 16px;
   width:min(190px,27vw);min-width:125px;
   text-align:center;position:relative;overflow:hidden;
   transition:border-color 0.2s,background 0.2s,transform 0.2s,box-shadow 0.2s;
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
 }
-.diff-card.hovered{border-color:#4dcea0;background:rgba(77,206,160,0.15);transform:translateY(-5px) scale(1.03);box-shadow:0 10px 36px rgba(77,206,160,0.3);}
+.diff-card.hovered{border-color:#4dcea0;background:rgba(77,206,160,0.25);transform:translateY(-5px) scale(1.03);box-shadow:0 10px 36px rgba(77,206,160,0.3);}
 .diff-card .icon{font-size:clamp(30px,6.5vw,46px);margin-bottom:6px;display:block;}
-.diff-card .name{font-size:clamp(16px,3.5vw,22px);color:#f5f0e0;margin-bottom:4px;}
-.diff-card .desc{font-size:clamp(10px,2.1vw,14px);color:#9fe8c0;font-family:'Nanum Gothic',sans-serif;line-height:1.35;}
+.diff-card .name{font-size:clamp(16px,3.5vw,22px);color:#fff;margin-bottom:4px;}
+.diff-card .desc{font-size:clamp(10px,2.1vw,14px);color:#a0f0c0;font-family:'Nanum Gothic',sans-serif;line-height:1.35;}
 .diff-card .best{font-size:clamp(10px,1.8vw,13px);color:#4dcea0;margin-top:6px;font-family:'Nanum Gothic',sans-serif;font-weight:700;}
 .hover-bar{position:absolute;bottom:0;left:0;height:5px;background:#4dcea0;width:0%;border-radius:0 0 22px 22px;}
 
-/* ── 씬3 HUD ── */
+/* 씬3: 게임 HUD — 캔버스 위 */
 #sceneGame{background:transparent;pointer-events:none;}
 .hud{
   position:absolute;top:0;left:0;right:0;
   display:flex;justify-content:space-between;align-items:flex-start;
   padding:12px 16px;
-  background:linear-gradient(180deg,rgba(10,32,16,0.9) 0%,transparent 100%);
+  background:linear-gradient(180deg,rgba(0,0,0,0.7) 0%,transparent 100%);
   z-index:20;pointer-events:auto;
 }
 .hud-block{text-align:center;min-width:70px;}
-.hud-label{font-size:clamp(9px,1.6vw,12px);color:#9fe8c0;font-family:'Nanum Gothic',sans-serif;letter-spacing:1px;}
-.hud-value{font-size:clamp(24px,5vw,40px);color:#f5f0e0;line-height:1;}
+.hud-label{font-size:clamp(9px,1.6vw,12px);color:#a0f0c0;font-family:'Nanum Gothic',sans-serif;letter-spacing:1px;}
+.hud-value{font-size:clamp(24px,5vw,40px);color:#fff;line-height:1;text-shadow:0 2px 6px rgba(0,0,0,0.5);}
 .hud-value.danger{color:#ff6b6b;animation:timerDanger 0.5s ease-in-out infinite;}
 @keyframes timerDanger{0%,100%{transform:scale(1);}50%{transform:scale(1.1);}}
-.combo-badge{
-  background:rgba(255,200,50,0.2);border:2px solid #ffc832;
-  border-radius:12px;padding:2px 8px;
-  font-size:clamp(10px,2.1vw,16px);color:#ffc832;
-  margin-top:2px;display:none;
-}
+.combo-badge{background:rgba(255,200,50,0.3);border:2px solid #ffc832;border-radius:12px;padding:2px 8px;font-size:clamp(10px,2.1vw,16px);color:#ffc832;margin-top:2px;display:none;}
 .combo-badge.show{display:block;}
-#pipCam{
-  position:absolute;bottom:16px;left:16px;
-  width:min(100px,17vw);height:min(100px,17vw);
-  border-radius:50%;overflow:hidden;
-  border:3px solid rgba(77,206,160,0.5);
-  opacity:0.6;z-index:20;
-}
-#pipCamVideo{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);}
 #musicBtn{
   position:fixed;top:12px;right:16px;
-  background:rgba(255,255,255,0.1);border:2px solid rgba(77,206,160,0.4);
-  border-radius:50%;width:44px;height:44px;
-  font-size:18px;cursor:pointer;z-index:100;
-  display:flex;align-items:center;justify-content:center;
-  color:#f5f0e0;transition:background 0.2s;
+  background:rgba(0,0,0,0.4);border:2px solid rgba(255,255,255,0.3);
+  border-radius:50%;width:44px;height:44px;font-size:18px;cursor:pointer;z-index:100;
+  display:flex;align-items:center;justify-content:center;color:#fff;
+  backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
 }
-#musicBtn:active{background:rgba(77,206,160,0.3);}
+#musicBtn:active{background:rgba(77,206,160,0.4);}
 #noHandMsg{
-  position:absolute;bottom:140px;left:50%;transform:translateX(-50%);
-  font-size:clamp(14px,2.6vw,20px);color:rgba(255,255,255,0.7);
-  background:rgba(0,0,0,0.4);padding:7px 18px;border-radius:18px;
+  position:fixed;bottom:130px;left:50%;transform:translateX(-50%);
+  font-size:clamp(14px,2.6vw,20px);color:rgba(255,255,255,0.8);
+  background:rgba(0,0,0,0.5);padding:7px 18px;border-radius:18px;
   z-index:20;display:none;pointer-events:none;white-space:nowrap;
+  backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
 }
-/* 콤보 보더 이펙트 */
-#comboGlow{
-  position:fixed;top:0;left:0;right:0;bottom:0;
-  pointer-events:none;z-index:15;
-  border:0px solid transparent;
-  transition:border 0.2s;
-}
-#comboGlow.active{border:6px solid rgba(255,200,50,0.4);box-shadow:inset 0 0 40px rgba(255,200,50,0.2);}
+#comboGlow{position:fixed;top:0;left:0;right:0;bottom:0;pointer-events:none;z-index:5;border:0px solid transparent;transition:border 0.2s;}
+#comboGlow.active{border:6px solid rgba(255,200,50,0.4);box-shadow:inset 0 0 40px rgba(255,200,50,0.15);}
 
-/* ── 씬4 결과 ── */
-#sceneResult{background:linear-gradient(180deg,#2D5016 0%,#1f4a2a 50%,#1B6B6B 100%);padding:16px;}
-.result-title{font-size:clamp(24px,6vw,48px);color:#f5f0e0;text-align:center;margin-bottom:4px;}
+/* 씬4: 결과 — 반투명 */
+#sceneResult{background:rgba(0,0,0,0.65);padding:16px;}
+.result-title{font-size:clamp(24px,6vw,48px);color:#fff;text-align:center;margin-bottom:4px;text-shadow:0 2px 8px rgba(0,0,0,0.5);}
 .new-record{font-size:clamp(18px,4vw,32px);color:#ffc832;text-align:center;margin-bottom:12px;animation:bounce 0.6s ease infinite alternate;display:none;}
 .new-record.show{display:block;}
 @keyframes bounce{from{transform:scale(1);}to{transform:scale(1.08);}}
 .result-stats{display:flex;gap:12px;justify-content:center;margin-bottom:18px;flex-wrap:wrap;}
-.stat-box{background:rgba(255,255,255,0.07);border:2px solid rgba(77,206,160,0.3);border-radius:14px;padding:12px 20px;text-align:center;min-width:100px;}
-.stat-box .s-label{font-size:clamp(10px,2.1vw,14px);color:#9fe8c0;font-family:'Nanum Gothic',sans-serif;}
-.stat-box .s-val{font-size:clamp(24px,5vw,40px);color:#f5f0e0;}
-.advice-box{font-size:clamp(15px,3.5vw,22px);color:#c8f0dc;text-align:center;padding:12px 20px;background:rgba(77,206,160,0.1);border-radius:14px;margin-bottom:22px;max-width:560px;line-height:1.4;}
+.stat-box{background:rgba(255,255,255,0.1);border:2px solid rgba(77,206,160,0.4);border-radius:14px;padding:12px 20px;text-align:center;min-width:100px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);}
+.stat-box .s-label{font-size:clamp(10px,2.1vw,14px);color:#a0f0c0;font-family:'Nanum Gothic',sans-serif;}
+.stat-box .s-val{font-size:clamp(24px,5vw,40px);color:#fff;}
+.advice-box{font-size:clamp(15px,3.5vw,22px);color:#c8f0dc;text-align:center;padding:12px 20px;background:rgba(77,206,160,0.15);border-radius:14px;margin-bottom:22px;max-width:560px;line-height:1.4;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);}
 .result-btns{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;}
 .rbtn{font-family:'Jua',sans-serif;font-size:clamp(16px,3.5vw,22px);padding:12px 28px;border-radius:100px;border:none;cursor:pointer;transition:transform 0.15s;}
 .rbtn.primary{background:#4dcea0;color:#0a2010;}
-.rbtn.secondary{background:rgba(255,255,255,0.1);border:2px solid rgba(77,206,160,0.5);color:#f5f0e0;}
+.rbtn.secondary{background:rgba(255,255,255,0.15);border:2px solid rgba(77,206,160,0.5);color:#fff;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);}
 .rbtn:active{transform:scale(0.96);}
 
 /* 로딩 */
-#loadingOverlay{
-  position:fixed;top:0;left:0;width:100%;height:100%;
-  background:#0d2e1a;z-index:999;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;
-  transition:opacity 0.5s;
-}
+#loadingOverlay{position:fixed;top:0;left:0;width:100%;height:100%;background:#0d2e1a;z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;transition:opacity 0.5s;}
 #loadingOverlay.fade-out{opacity:0;pointer-events:none;}
 .loading-icon{font-size:54px;animation:spin 2s linear infinite;}
 @keyframes spin{from{transform:rotate(0);}to{transform:rotate(360deg);}}
@@ -153,20 +131,23 @@ body{
   <div class="loading-text" id="loadingText">카메라와 손 인식을 준비하는 중이에요...</div>
 </div>
 
-<video id="videoEl" playsinline autoplay muted></video>
+<!-- ★ AR 핵심: 카메라 영상이 풀스크린 배경 ★ -->
+<video id="cameraFull" playsinline autoplay muted></video>
+
+<!-- 게임 오버레이 캔버스 (투명 배경, 카메라 위) -->
 <canvas id="gameCanvas"></canvas>
-<button id="musicBtn" onclick="toggleMusic()">🔇</button>
 <div id="comboGlow"></div>
+<button id="musicBtn" onclick="toggleMusic()">🔇</button>
 
 <!-- 씬1: 시작 -->
 <div class="scene" id="sceneStart">
   <div class="title-wrap">
     <div class="title-main">🍀 잎을 잡아라!</div>
-    <div class="title-sub">손을 올려서 게임을 시작해요</div>
+    <div class="title-sub">화면 속 내 손으로 잎을 잡아요!</div>
   </div>
-  <div class="cam-wrap"><video id="camPreview" playsinline autoplay muted></video></div>
-  <div class="hand-hint" id="handHint">✋ 손을 카메라 앞에 올려주세요</div>
+  <div class="hand-hint" id="handHint">✋ 손을 올려주세요</div>
   <div class="hand-detected-msg vis-hidden" id="handDetectedMsg">👋 손 인식됨! 잠시 후 시작...</div>
+  <div class="ar-guide">카메라에 내 모습이 보이면 준비 완료!</div>
 </div>
 
 <!-- 씬2: 난이도 -->
@@ -180,14 +161,13 @@ body{
   </div>
 </div>
 
-<!-- 씬3: 게임 -->
+<!-- 씬3: 게임 HUD -->
 <div class="scene vis-hidden" id="sceneGame">
   <div class="hud">
     <div class="hud-block"><div class="hud-label">점수</div><div class="hud-value" id="hudScore">0</div></div>
     <div class="hud-block"><div class="hud-label">남은 시간</div><div class="hud-value" id="hudTimer">60</div></div>
     <div class="hud-block"><div class="hud-label">콤보</div><div class="hud-value" id="hudCombo">0</div><div class="combo-badge" id="comboBadge">🔥</div></div>
   </div>
-  <div id="pipCam"><video id="pipCamVideo" playsinline autoplay muted></video></div>
   <div id="noHandMsg">✋ 손을 보여주세요</div>
 </div>
 
@@ -207,180 +187,130 @@ body{
   </div>
 </div>
 
-<!-- MediaPipe: 버전 고정 -->
+<!-- MediaPipe 버전 고정 -->
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/hands.js" crossorigin="anonymous"></script>
 
 <script>
 // ═══════════════════════════════════
-//  캔버스 & 리사이즈
+//  캔버스
 // ═══════════════════════════════════
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-let W, H;
-function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+const canvas=document.getElementById('gameCanvas');
+const ctx=canvas.getContext('2d');
+let W,H;
+function resize(){W=canvas.width=window.innerWidth;H=canvas.height=window.innerHeight;}
 resize();
-window.addEventListener('resize', resize);
+window.addEventListener('resize',resize);
 
 // ═══════════════════════════════════
-//  씬 관리
+//  씬
 // ═══════════════════════════════════
-const SCENE = { START:0, DIFF:1, GAME:2, RESULT:3 };
-let currentScene = SCENE.START;
-const sceneEls = ['sceneStart','sceneDifficulty','sceneGame','sceneResult'].map(id=>document.getElementById(id));
-function showScene(s) {
-  currentScene = s;
-  sceneEls.forEach((el,i) => i===s ? el.classList.remove('vis-hidden') : el.classList.add('vis-hidden'));
-}
+const SCENE={START:0,DIFF:1,GAME:2,RESULT:3};
+let currentScene=SCENE.START;
+const sceneEls=['sceneStart','sceneDifficulty','sceneGame','sceneResult'].map(id=>document.getElementById(id));
+function showScene(s){currentScene=s;sceneEls.forEach((el,i)=>i===s?el.classList.remove('vis-hidden'):el.classList.add('vis-hidden'));}
 
 // ═══════════════════════════════════
-//  로컬 기록
+//  기록
 // ═══════════════════════════════════
-const SAVE_KEY = 'catchLeaves_records';
-function loadRecords() {
-  try { const r=localStorage.getItem(SAVE_KEY); if(r) return JSON.parse(r); } catch(e){}
-  return { level:[{best:0,plays:0},{best:0,plays:0},{best:0,plays:0}], lastLevel:0 };
-}
-let records = loadRecords();
-function saveRecords() { try{localStorage.setItem(SAVE_KEY,JSON.stringify(records));}catch(e){} }
+const SAVE_KEY='catchLeaves_records';
+function loadRecords(){try{const r=localStorage.getItem(SAVE_KEY);if(r)return JSON.parse(r);}catch(e){}return{level:[{best:0,plays:0},{best:0,plays:0},{best:0,plays:0}],lastLevel:0};}
+let records=loadRecords();
+function saveRecords(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(records));}catch(e){}}
 
 // ═══════════════════════════════════
-//  레벨 설정 (프롬프트 명세 반영)
+//  레벨
 // ═══════════════════════════════════
-const LEVEL_CONFIG = [
-  { size:80, speed:2,   maxLeaves:2, hitRadius:80, spawnRate:85 },
-  { size:55, speed:4,   maxLeaves:4, hitRadius:55, spawnRate:65 },
-  { size:35, speed:7,   maxLeaves:6, hitRadius:35, spawnRate:50 }
+const LEVEL_CONFIG=[
+  {size:80,speed:2,maxLeaves:2,hitRadius:80,spawnRate:85},
+  {size:55,speed:4,maxLeaves:4,hitRadius:55,spawnRate:65},
+  {size:35,speed:7,maxLeaves:6,hitRadius:35,spawnRate:50}
 ];
 
 // ═══════════════════════════════════
-//  게임 상태
+//  상태
 // ═══════════════════════════════════
-let selectedLevel=0, gameScore=0, gameCaught=0, gameCombo=0, gameMaxCombo=0;
-let gameTimer=60, gameRunning=false, gameTimerInterval=null, frameCount=1;
+let selectedLevel=0,gameScore=0,gameCaught=0,gameCombo=0,gameMaxCombo=0;
+let gameTimer=60,gameRunning=false,gameTimerInterval=null,frameCount=1;
 let comboMultiplier=1;
-let leaves=[], particles=[], scorePopups=[], handGlows=[], bgGlitters=[];
-let handX=-1, handY=-1, handVisible=false, noHandTimeout=null;
-let shakeX=0, shakeY=0, shakeDecay=0;
-
-// 터치 입력 (손 인식과 동시 지원)
-let touchX=-1, touchY=-1, touchActive=false;
+let leaves=[],particles=[],scorePopups=[],handGlows=[];
+let handX=-1,handY=-1,handVisible=false,noHandTimeout=null;
+let shakeX=0,shakeY=0,shakeDecay=0;
+let touchX=-1,touchY=-1,touchActive=false;
 
 // ═══════════════════════════════════
-//  터치 이벤트 처리
+//  터치
 // ═══════════════════════════════════
-document.addEventListener('touchstart', onTouch, {passive:true});
-document.addEventListener('touchmove', onTouch, {passive:true});
-document.addEventListener('touchend', ()=>{ touchActive=false; }, {passive:true});
+document.addEventListener('touchstart',onTouch,{passive:true});
+document.addEventListener('touchmove',onTouch,{passive:true});
+document.addEventListener('touchend',()=>{touchActive=false;},{passive:true});
 
-function onTouch(e) {
-  if (e.touches.length === 0) return;
-  const t = e.touches[0];
-  touchX = t.clientX;
-  touchY = t.clientY;
-  touchActive = true;
-
-  // 시작화면에서 터치로도 씬 전환
-  if (currentScene === SCENE.START && !startHandTimeout) {
+function onTouch(e){
+  if(!e.touches.length) return;
+  const t=e.touches[0];
+  touchX=t.clientX;touchY=t.clientY;touchActive=true;
+  if(currentScene===SCENE.START&&!startHandTimeout){
     document.getElementById('handHint').classList.add('vis-hidden');
     document.getElementById('handDetectedMsg').classList.remove('vis-hidden');
-    startHandTimeout = setTimeout(()=>{ goSelectDiff(); startHandTimeout=null; }, 1200);
+    startHandTimeout=setTimeout(()=>{goSelectDiff();startHandTimeout=null;},1200);
   }
-
-  // 난이도 선택: 터치로 카드 직접 선택
-  if (currentScene === SCENE.DIFF) {
+  if(currentScene===SCENE.DIFF){
     for(let i=0;i<3;i++){
-      const rect = document.getElementById(`card${i}`).getBoundingClientRect();
-      if(touchX>=rect.left && touchX<=rect.right && touchY>=rect.top && touchY<=rect.bottom){
-        selectDifficulty(i);
-        return;
-      }
+      const rect=document.getElementById(`card${i}`).getBoundingClientRect();
+      if(touchX>=rect.left&&touchX<=rect.right&&touchY>=rect.top&&touchY<=rect.bottom){selectDifficulty(i);return;}
     }
   }
-
-  // 게임중: 터치 좌표를 잡기 판정에 사용
-  if (currentScene === SCENE.GAME && gameRunning) {
-    addHandGlow(touchX, touchY);
-    catchLeaves(touchX, touchY);
+  if(currentScene===SCENE.GAME&&gameRunning){
+    addHandGlow(touchX,touchY,1.0);
+    catchLeaves(touchX,touchY);
   }
 }
 
 // ═══════════════════════════════════
-//  오디오 (갤탭 suspended 대응)
+//  오디오
 // ═══════════════════════════════════
-let audioCtx=null, musicOn=false, bgOscNode=null, bgGainNode=null;
-function getAudio() {
-  if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
-  if(audioCtx.state==='suspended') audioCtx.resume().catch(()=>{});
-  return audioCtx;
-}
-function unlockAudio(){ getAudio(); }
-document.addEventListener('touchstart', unlockAudio, {once:true, passive:true});
-document.addEventListener('click', unlockAudio, {once:true});
+let audioCtx=null,musicOn=false,bgOscNode=null,bgGainNode=null;
+function getAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==='suspended')audioCtx.resume().catch(()=>{});return audioCtx;}
+document.addEventListener('touchstart',()=>{getAudio();},{once:true,passive:true});
+document.addEventListener('click',()=>{getAudio();},{once:true});
 
 function playTone(freq,dur,type='sine',vol=0.3,delay=0){
-  try{
-    const ac=getAudio(),osc=ac.createOscillator(),gain=ac.createGain();
-    osc.connect(gain);gain.connect(ac.destination);osc.type=type;
-    const t=ac.currentTime+delay;
-    osc.frequency.setValueAtTime(freq,t);
-    gain.gain.setValueAtTime(vol,t);
-    gain.gain.exponentialRampToValueAtTime(0.001,t+dur);
-    osc.start(t);osc.stop(t+dur+0.06);
-  }catch(e){}
+  try{const ac=getAudio(),osc=ac.createOscillator(),gain=ac.createGain();osc.connect(gain);gain.connect(ac.destination);osc.type=type;const t=ac.currentTime+delay;osc.frequency.setValueAtTime(freq,t);gain.gain.setValueAtTime(vol,t);gain.gain.exponentialRampToValueAtTime(0.001,t+dur);osc.start(t);osc.stop(t+dur+0.06);}catch(e){}
 }
-
 function playCatchSound(type){
   switch(type){
-    case 'leaf':     playTone(523,0.1,'sine',0.25); break;
-    case 'clover':   playTone(659,0.1,'sine',0.28); playTone(784,0.1,'sine',0.24,0.07); break;
-    case 'fourleaf': [523,659,784,1047].forEach((f,i)=>playTone(f,0.1,'sine',0.34,i*0.05)); break;
-    case 'gold':     [880,1047,1319].forEach((f,i)=>playTone(f,0.12,'sine',0.3,i*0.04)); break;
-    case 'dead':     playTone(150,0.3,'sawtooth',0.18); break;
-    case 'combo':    [523,659,784,1047].forEach((f,i)=>playTone(f,0.18,'triangle',0.24,i*0.06)); break;
-    case 'select':   [660,880].forEach((f,i)=>playTone(f,0.14,'sine',0.24,i*0.06)); break;
-    case 'timeup':   [400,300,200].forEach((f,i)=>playTone(f,0.22,'sawtooth',0.18,i*0.12)); break;
+    case 'leaf':playTone(523,0.1,'sine',0.25);break;
+    case 'clover':playTone(659,0.1,'sine',0.28);playTone(784,0.1,'sine',0.24,0.07);break;
+    case 'fourleaf':[523,659,784,1047].forEach((f,i)=>playTone(f,0.1,'sine',0.34,i*0.05));break;
+    case 'gold':[880,1047,1319].forEach((f,i)=>playTone(f,0.12,'sine',0.3,i*0.04));break;
+    case 'dead':playTone(150,0.3,'sawtooth',0.18);break;
+    case 'combo':[523,659,784,1047].forEach((f,i)=>playTone(f,0.18,'triangle',0.24,i*0.06));break;
+    case 'select':[660,880].forEach((f,i)=>playTone(f,0.14,'sine',0.24,i*0.06));break;
+    case 'timeup':[400,300,200].forEach((f,i)=>playTone(f,0.22,'sawtooth',0.18,i*0.12));break;
   }
 }
-
-function startBgMusic(){
-  try{
-    const ac=getAudio();
-    if(bgOscNode){try{bgOscNode.stop();}catch(e){}bgOscNode=null;}
-    bgGainNode=ac.createGain();bgGainNode.gain.setValueAtTime(0.04,ac.currentTime);bgGainNode.connect(ac.destination);
-    bgOscNode=ac.createOscillator();bgOscNode.type='sine';bgOscNode.frequency.setValueAtTime(80,ac.currentTime);
-    bgOscNode.connect(bgGainNode);bgOscNode.start();
-    musicOn=true;document.getElementById('musicBtn').textContent='🔊';
-  }catch(e){}
-}
-function stopBgMusic(){
-  try{if(bgOscNode){bgOscNode.stop();bgOscNode=null;}}catch(e){}
-  musicOn=false;document.getElementById('musicBtn').textContent='🔇';
-}
+function startBgMusic(){try{const ac=getAudio();if(bgOscNode){try{bgOscNode.stop();}catch(e){}bgOscNode=null;}bgGainNode=ac.createGain();bgGainNode.gain.setValueAtTime(0.04,ac.currentTime);bgGainNode.connect(ac.destination);bgOscNode=ac.createOscillator();bgOscNode.type='sine';bgOscNode.frequency.setValueAtTime(80,ac.currentTime);bgOscNode.connect(bgGainNode);bgOscNode.start();musicOn=true;document.getElementById('musicBtn').textContent='🔊';}catch(e){}}
+function stopBgMusic(){try{if(bgOscNode){bgOscNode.stop();bgOscNode=null;}}catch(e){}musicOn=false;document.getElementById('musicBtn').textContent='🔇';}
 function toggleMusic(){musicOn?stopBgMusic():startBgMusic();}
 
 // ═══════════════════════════════════
-//  MediaPipe — 직접 루프 (Camera 헬퍼 없음)
+//  MediaPipe (카메라 = 풀스크린)
 // ═══════════════════════════════════
-let handsDetector=null, mpProcessing=false, startHandTimeout=null;
+let handsDetector=null,mpProcessing=false,startHandTimeout=null;
 
 function initMediaPipe(){
-  const videoEl=document.getElementById('videoEl');
+  const camEl=document.getElementById('cameraFull');
   handsDetector=new Hands({locateFile:f=>`https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/${f}`});
   handsDetector.setOptions({maxNumHands:1,modelComplexity:1,minDetectionConfidence:0.5,minTrackingConfidence:0.4});
   handsDetector.onResults(onHandResults);
 
   navigator.mediaDevices.getUserMedia({
-    video:{facingMode:'user',width:{ideal:640},height:{ideal:480}},audio:false
+    video:{facingMode:'user',width:{ideal:1280},height:{ideal:720}},audio:false
   }).then(stream=>{
-    videoEl.srcObject=stream;
-    document.getElementById('camPreview').srcObject=stream;
-    document.getElementById('pipCamVideo').srcObject=stream;
-    videoEl.onloadedmetadata=()=>{
-      videoEl.play().then(()=>{
+    camEl.srcObject=stream;
+    camEl.onloadedmetadata=()=>{
+      camEl.play().then(()=>{
         const ov=document.getElementById('loadingOverlay');
-        ov.classList.add('fade-out');
-        setTimeout(()=>{ov.style.display='none';},500);
-        startGlitter();
+        ov.classList.add('fade-out');setTimeout(()=>{ov.style.display='none';},500);
         requestAnimationFrame(mpLoop);
       }).catch(showCameraError);
     };
@@ -389,19 +319,16 @@ function initMediaPipe(){
 
 function showCameraError(err){
   console.error('카메라 오류:',err);
-  // 카메라 없어도 터치로 플레이 가능 — 로딩만 닫기
   const ov=document.getElementById('loadingOverlay');
-  ov.classList.add('fade-out');
-  setTimeout(()=>{ov.style.display='none';},500);
-  startGlitter();
+  ov.classList.add('fade-out');setTimeout(()=>{ov.style.display='none';},500);
   document.getElementById('handHint').textContent='✋ 화면을 터치해서 시작해요!';
 }
 
 async function mpLoop(){
-  const v=document.getElementById('videoEl');
-  if(!mpProcessing && v.readyState>=2){
+  const camEl=document.getElementById('cameraFull');
+  if(!mpProcessing&&camEl.readyState>=2){
     mpProcessing=true;
-    try{await handsDetector.send({image:v});}catch(e){}
+    try{await handsDetector.send({image:camEl});}catch(e){}
     mpProcessing=false;
   }
   requestAnimationFrame(mpLoop);
@@ -415,34 +342,31 @@ function onHandResults(results){
       document.getElementById('handDetectedMsg').classList.add('vis-hidden');
       if(startHandTimeout){clearTimeout(startHandTimeout);startHandTimeout=null;}
     }
-    if(currentScene===SCENE.GAME && gameRunning && !noHandTimeout){
+    if(currentScene===SCENE.GAME&&gameRunning&&!noHandTimeout){
       noHandTimeout=setTimeout(()=>{
-        if(!handVisible && !touchActive && currentScene===SCENE.GAME && gameRunning)
+        if(!handVisible&&!touchActive&&currentScene===SCENE.GAME&&gameRunning)
           document.getElementById('noHandMsg').style.display='block';
         noHandTimeout=null;
       },1500);
     }
     return;
   }
-
   const lm=results.multiHandLandmarks[0];
+  // 미러링: scaleX(-1) 적용된 비디오 위에 그리므로 x반전
   handX=(1-(lm[0].x+lm[9].x)/2)*W;
   handY=((lm[0].y+lm[9].y)/2)*H;
   handVisible=true;
 
-  // 상단 만세 → 파티클 더 크게
-  const isUpper = handY < H * 0.35;
-  addHandGlow(handX, handY, isUpper ? 1.8 : 1.0);
+  const isUpper=handY<H*0.35;
+  addHandGlow(handX,handY,isUpper?1.8:1.0);
 
   if(currentScene===SCENE.START){
     document.getElementById('handHint').classList.add('vis-hidden');
     document.getElementById('handDetectedMsg').classList.remove('vis-hidden');
-    if(!startHandTimeout){
-      startHandTimeout=setTimeout(()=>{goSelectDiff();startHandTimeout=null;},1500);
-    }
+    if(!startHandTimeout){startHandTimeout=setTimeout(()=>{goSelectDiff();startHandTimeout=null;},1500);}
   }
   if(currentScene===SCENE.DIFF) checkCardHover(handX,handY);
-  if(currentScene===SCENE.GAME && gameRunning){
+  if(currentScene===SCENE.GAME&&gameRunning){
     if(noHandTimeout){clearTimeout(noHandTimeout);noHandTimeout=null;}
     document.getElementById('noHandMsg').style.display='none';
     catchLeaves(handX,handY);
@@ -450,119 +374,64 @@ function onHandResults(results){
 }
 
 // ═══════════════════════════════════
-//  배경 글리터
-// ═══════════════════════════════════
-function startGlitter(){
-  bgGlitters=[];
-  for(let i=0;i<45;i++) bgGlitters.push({
-    x:Math.random()*W, y:Math.random()*H*0.55,
-    r:Math.random()*2.5+0.5, speed:Math.random()*0.02+0.01, phase:Math.random()*Math.PI*2
-  });
-}
-
-function drawBg(){
-  // 프롬프트: 상단 30% 짙은 초록 #1A3A0A, 중단 40% 청록 #1B6B6B, 하단 30% 베이지 #C4A882
-  const grd=ctx.createLinearGradient(0,0,0,H);
-  grd.addColorStop(0,'#1A3A0A');
-  grd.addColorStop(0.30,'#1A3A0A');
-  grd.addColorStop(0.35,'#1B6B6B');
-  grd.addColorStop(0.70,'#1B6B6B');
-  grd.addColorStop(0.75,'#C4A882');
-  grd.addColorStop(1,'#C4A882');
-  ctx.fillStyle=grd;ctx.fillRect(0,0,W,H);
-
-  // 수면 반짝임
-  const now=Date.now()/1000;
-  bgGlitters.forEach(g=>{
-    const alpha=0.2+0.5*Math.abs(Math.sin(now*g.speed*10+g.phase));
-    ctx.save();ctx.globalAlpha=alpha;ctx.fillStyle='#ffffff';
-    ctx.beginPath();ctx.arc(g.x,g.y+H*0.35,g.r,0,Math.PI*2);ctx.fill();ctx.restore();
-  });
-
-  // 나뭇가지 실루엣
-  ctx.save();ctx.fillStyle='rgba(10,28,8,0.5)';
-  [[W*0.06,-18,110,75,0.3],[W*0.18,10,85,55,-0.2],[W*0.82,-8,105,70,-0.4],[W*0.94,16,75,50,0.3]]
-    .forEach(([cx,cy,rx,ry,rot])=>{ctx.beginPath();ctx.ellipse(cx,cy,rx,ry,rot,0,Math.PI*2);ctx.fill();});
-  ctx.restore();
-}
-
-// ═══════════════════════════════════
-//  잎 스폰 & 그리기
+//  잎
 // ═══════════════════════════════════
 function spawnLeaf(){
-  const cfg=LEVEL_CONFIG[selectedLevel], r=Math.random();
-  let type;
-  if(selectedLevel===2 && r<0.10)     type='dead';
-  else if(r<0.10+0.00)                type = type||null; // dead 분기 이미 처리
-  if(!type){
-    const r2=Math.random();
-    if(r2<0.10)      type='gold';
-    else if(r2<0.30) type='fourleaf';
-    else if(r2<0.55) type='clover';
-    else             type='leaf';
-  }
+  const cfg=LEVEL_CONFIG[selectedLevel],r=Math.random();
+  let type=null;
+  if(selectedLevel===2&&r<0.10) type='dead';
+  if(!type){const r2=Math.random();type=r2<0.10?'gold':r2<0.30?'fourleaf':r2<0.55?'clover':'leaf';}
   leaves.push({
-    x:Math.random()*(W-80)+40, y:-cfg.size-10,
+    x:Math.random()*(W-80)+40,y:-cfg.size-10,
     size:cfg.size*(0.85+Math.random()*0.3),
     speed:cfg.speed*(0.8+Math.random()*0.4),
-    swingPhase:Math.random()*Math.PI*2, swingAmp:1.5+Math.random()*2.5,
-    rotation:Math.random()*Math.PI*2, rotSpeed:(Math.random()-0.5)*0.06,
-    type, sparkleOff:Math.random()*Math.PI*2
+    swingPhase:Math.random()*Math.PI*2,swingAmp:1.5+Math.random()*2.5,
+    rotation:Math.random()*Math.PI*2,rotSpeed:(Math.random()-0.5)*0.06,
+    type,sparkleOff:Math.random()*Math.PI*2
   });
 }
 
 function drawLeaf(leaf){
-  ctx.save();
-  ctx.translate(leaf.x,leaf.y);
-  ctx.rotate(leaf.rotation);
+  ctx.save();ctx.translate(leaf.x,leaf.y);ctx.rotate(leaf.rotation);
   const s=leaf.size;
+  // 반투명 배경 원 (잎 가시성 확보)
+  ctx.save();ctx.globalAlpha=0.25;ctx.fillStyle='#000';
+  ctx.beginPath();ctx.arc(0,0,s*0.6,0,Math.PI*2);ctx.fill();ctx.restore();
+
   switch(leaf.type){
-    case 'leaf':     drawSimpleLeaf(s,'#8B6914','#6B4F10'); break;
-    case 'clover':   drawClover(s,'#3dbe6e','#28904f',3); break;
+    case 'leaf':drawSimpleLeaf(s,'#8B6914','#6B4F10');break;
+    case 'clover':drawClover(s,'#3dbe6e','#28904f',3);break;
     case 'fourleaf':
       drawClover(s,'#2edd88','#1aaa60',4);
-      {const sp=Math.abs(Math.sin(Date.now()/300+leaf.sparkleOff))*0.45;
+      {const sp=Math.abs(Math.sin(Date.now()/300+leaf.sparkleOff))*0.5;
        if(sp>0.05){ctx.save();ctx.globalAlpha=sp;drawStar(0,0,s*0.56,6,'#ffd700');ctx.restore();}}
       break;
     case 'gold':
       drawSimpleLeaf(s,'#f5c542','#e0a020');
-      {const gp=0.22+0.16*Math.sin(Date.now()/200+leaf.sparkleOff);
-       ctx.save();ctx.globalAlpha=gp;ctx.fillStyle='#ffe07a';
-       ctx.beginPath();ctx.arc(0,0,s*0.55,0,Math.PI*2);ctx.fill();ctx.restore();}
+      {const gp=0.25+0.18*Math.sin(Date.now()/200+leaf.sparkleOff);
+       ctx.save();ctx.globalAlpha=gp;ctx.fillStyle='#ffe07a';ctx.beginPath();ctx.arc(0,0,s*0.55,0,Math.PI*2);ctx.fill();ctx.restore();}
       break;
-    case 'dead': drawSimpleLeaf(s,'#555566','#3a3a48'); break;
+    case 'dead':drawSimpleLeaf(s,'#555566','#3a3a48');break;
   }
   ctx.restore();
 }
 
 function drawSimpleLeaf(s,fill,stroke){
-  ctx.save();ctx.scale(1,1.5);
-  ctx.beginPath();ctx.arc(0,0,s*0.38,0,Math.PI*2);
-  ctx.fillStyle=fill;ctx.fill();
-  ctx.strokeStyle=stroke;ctx.lineWidth=2;ctx.stroke();
-  ctx.restore();
-  ctx.strokeStyle=stroke;ctx.lineWidth=1.5;
-  ctx.beginPath();ctx.moveTo(0,-s*0.5);ctx.lineTo(0,s*0.5);ctx.stroke();
+  ctx.save();ctx.scale(1,1.5);ctx.beginPath();ctx.arc(0,0,s*0.38,0,Math.PI*2);
+  ctx.fillStyle=fill;ctx.fill();ctx.strokeStyle=stroke;ctx.lineWidth=2;ctx.stroke();ctx.restore();
+  ctx.strokeStyle=stroke;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(0,-s*0.5);ctx.lineTo(0,s*0.5);ctx.stroke();
 }
 
 function drawClover(s,fill,stroke,petals){
   const r=s*0.28,d=s*0.18;
   ctx.fillStyle=fill;ctx.strokeStyle=stroke;ctx.lineWidth=2;
-  for(let i=0;i<petals;i++){
-    const a=(i/petals)*Math.PI*2;
-    ctx.beginPath();ctx.arc(Math.cos(a)*d,Math.sin(a)*d,r,0,Math.PI*2);ctx.fill();ctx.stroke();
-  }
-  ctx.strokeStyle=stroke;ctx.lineWidth=3;
-  ctx.beginPath();ctx.moveTo(0,d);ctx.lineTo(0,s*0.6);ctx.stroke();
+  for(let i=0;i<petals;i++){const a=(i/petals)*Math.PI*2;ctx.beginPath();ctx.arc(Math.cos(a)*d,Math.sin(a)*d,r,0,Math.PI*2);ctx.fill();ctx.stroke();}
+  ctx.strokeStyle=stroke;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(0,d);ctx.lineTo(0,s*0.6);ctx.stroke();
 }
 
 function drawStar(cx,cy,r,points,color){
   ctx.fillStyle=color;ctx.beginPath();
-  for(let i=0;i<points*2;i++){
-    const angle=(i*Math.PI)/points-Math.PI/2,rad=i%2===0?r:r*0.4;
-    const x=cx+Math.cos(angle)*rad,y=cy+Math.sin(angle)*rad;
-    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
-  }
+  for(let i=0;i<points*2;i++){const angle=(i*Math.PI)/points-Math.PI/2,rad=i%2===0?r:r*0.4;const x=cx+Math.cos(angle)*rad,y=cy+Math.sin(angle)*rad;i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);}
   ctx.closePath();ctx.fill();
 }
 
@@ -570,81 +439,50 @@ function drawStar(cx,cy,r,points,color){
 //  파티클
 // ═══════════════════════════════════
 function addHandGlow(x,y,scale=1.0){
-  const count = Math.round(2 * scale);
+  const count=Math.round(3*scale);
   for(let i=0;i<count;i++) handGlows.push({
-    x:x+(Math.random()-0.5)*26*scale, y:y+(Math.random()-0.5)*26*scale,
-    r:(Math.random()*8+4)*scale, alpha:0.55,
+    x:x+(Math.random()-0.5)*26*scale,y:y+(Math.random()-0.5)*26*scale,
+    r:(Math.random()*8+4)*scale,alpha:0.6,
     color:`hsl(${140+Math.random()*40},80%,65%)`
   });
 }
-
 function addCatchParticles(x,y,type){
-  const colors = type==='fourleaf'?['#2edd88','#ffd700','#ffffff','#a0ffcc']
-               : type==='gold'    ?['#ffd700','#ffaa00','#ffffff','#ffe57a']
-               : type==='dead'    ?['#888899','#aaaaaa','#666677']
-                                  :['#4dcea0','#9fe8c0','#ffffff'];
-  for(let i=0;i<18;i++){
-    const angle=(i/18)*Math.PI*2+Math.random()*0.5,speed=3+Math.random()*6;
-    particles.push({
-      x,y,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed-2,
-      r:Math.random()*7+3,color:colors[Math.floor(Math.random()*colors.length)],life:1
-    });
-  }
+  const colors=type==='fourleaf'?['#2edd88','#ffd700','#ffffff','#a0ffcc']:type==='gold'?['#ffd700','#ffaa00','#ffffff','#ffe57a']:type==='dead'?['#888899','#aaaaaa','#666677']:['#4dcea0','#9fe8c0','#ffffff'];
+  for(let i=0;i<20;i++){const angle=(i/20)*Math.PI*2+Math.random()*0.5,speed=3+Math.random()*7;particles.push({x,y,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed-2,r:Math.random()*8+3,color:colors[Math.floor(Math.random()*colors.length)],life:1});}
 }
-
-function addScorePopup(x,y,text,color){scorePopups.push({x,y,text,color,vy:-2.2,life:1});}
+function addScorePopup(x,y,text,color){scorePopups.push({x,y,text,color,vy:-2.5,life:1});}
 
 function updateAndDrawParticles(){
   handGlows=handGlows.filter(g=>g.alpha>0.01);
-  handGlows.forEach(g=>{
-    g.alpha*=0.87;ctx.save();ctx.globalAlpha=g.alpha;ctx.fillStyle=g.color;
-    ctx.beginPath();ctx.arc(g.x,g.y,g.r,0,Math.PI*2);ctx.fill();ctx.restore();
-  });
+  handGlows.forEach(g=>{g.alpha*=0.86;ctx.save();ctx.globalAlpha=g.alpha;ctx.fillStyle=g.color;ctx.beginPath();ctx.arc(g.x,g.y,g.r,0,Math.PI*2);ctx.fill();ctx.restore();});
   particles=particles.filter(p=>p.life>0.02);
-  particles.forEach(p=>{
-    p.x+=p.vx;p.y+=p.vy;p.vy+=0.22;p.vx*=0.95;p.life*=0.91;
-    ctx.save();ctx.globalAlpha=p.life;ctx.fillStyle=p.color;
-    ctx.beginPath();ctx.arc(p.x,p.y,Math.max(0.5,p.r*p.life),0,Math.PI*2);ctx.fill();ctx.restore();
-  });
+  particles.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vy+=0.22;p.vx*=0.95;p.life*=0.91;ctx.save();ctx.globalAlpha=p.life;ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,Math.max(0.5,p.r*p.life),0,Math.PI*2);ctx.fill();ctx.restore();});
   scorePopups=scorePopups.filter(s=>s.life>0.02);
-  scorePopups.forEach(s=>{
-    s.y+=s.vy;s.life*=0.93;ctx.save();ctx.globalAlpha=s.life;
-    ctx.font=`bold ${Math.max(20,Math.round(30*s.life))}px 'Jua',sans-serif`;
-    ctx.fillStyle=s.color;ctx.textAlign='center';
-    ctx.fillText(s.text,s.x,s.y);ctx.restore();
-  });
+  scorePopups.forEach(s=>{s.y+=s.vy;s.life*=0.93;ctx.save();ctx.globalAlpha=s.life;ctx.font=`bold ${Math.max(22,Math.round(32*s.life))}px 'Jua',sans-serif`;ctx.fillStyle=s.color;ctx.textAlign='center';ctx.shadowColor='rgba(0,0,0,0.6)';ctx.shadowBlur=6;ctx.fillText(s.text,s.x,s.y);ctx.restore();});
 }
 
 // ═══════════════════════════════════
-//  화면 흔들림
+//  흔들림 / 커서
 // ═══════════════════════════════════
 function shakeScreen(){shakeX=(Math.random()-0.5)*16;shakeY=(Math.random()-0.5)*16;shakeDecay=0.82;}
-function applyShake(){
-  if(Math.abs(shakeX)>0.5||Math.abs(shakeY)>0.5){ctx.translate(shakeX,shakeY);shakeX*=shakeDecay;shakeY*=shakeDecay;}
-  else{shakeX=0;shakeY=0;}
-}
+function applyShake(){if(Math.abs(shakeX)>0.5||Math.abs(shakeY)>0.5){ctx.translate(shakeX,shakeY);shakeX*=shakeDecay;shakeY*=shakeDecay;}else{shakeX=0;shakeY=0;}}
 
-// ═══════════════════════════════════
-//  손 커서
-// ═══════════════════════════════════
 function drawHandCursor(){
-  // 손 인식 커서
   if(handVisible){
     const pulse=0.85+0.15*Math.sin(Date.now()/150);
     const r=LEVEL_CONFIG[selectedLevel].hitRadius*pulse;
     ctx.save();
-    ctx.strokeStyle='rgba(77,206,160,0.6)';ctx.lineWidth=3;
-    ctx.beginPath();ctx.arc(handX,handY,r,0,Math.PI*2);ctx.stroke();
-    ctx.strokeStyle='rgba(255,255,255,0.25)';ctx.lineWidth=1;
-    ctx.beginPath();ctx.arc(handX,handY,r*0.45,0,Math.PI*2);ctx.stroke();
+    // 잡기 범위 표시: 밝은 원 (AR에서 잘 보이도록)
+    ctx.strokeStyle='rgba(77,255,160,0.7)';ctx.lineWidth=3;ctx.setLineDash([8,6]);
+    ctx.beginPath();ctx.arc(handX,handY,r,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
+    // 중심점
+    ctx.fillStyle='rgba(77,255,160,0.8)';ctx.beginPath();ctx.arc(handX,handY,8,0,Math.PI*2);ctx.fill();
     ctx.restore();
   }
-  // 터치 커서
   if(touchActive){
     const r=LEVEL_CONFIG[selectedLevel].hitRadius*0.6;
-    ctx.save();
-    ctx.strokeStyle='rgba(255,200,100,0.5)';ctx.lineWidth=2;
-    ctx.beginPath();ctx.arc(touchX,touchY,r,0,Math.PI*2);ctx.stroke();
+    ctx.save();ctx.strokeStyle='rgba(255,200,100,0.6)';ctx.lineWidth=2;ctx.setLineDash([6,4]);
+    ctx.beginPath();ctx.arc(touchX,touchY,r,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
     ctx.restore();
   }
 }
@@ -657,31 +495,20 @@ function catchLeaves(hx,hy){
   leaves=leaves.filter(leaf=>{
     const dx=leaf.x-hx,dy=leaf.y-hy;
     if(Math.sqrt(dx*dx+dy*dy)<hitR+leaf.size*0.45){
-      let pts=0,color='#f5f0e0',addTime=0;
+      let pts=0,color='#fff',addTime=0;
       switch(leaf.type){
-        case 'leaf':     pts=1;  color='#9fe8c0'; break;
-        case 'clover':   pts=3;  color='#4dcea0'; break;
-        case 'fourleaf': pts=10; color='#ffd700'; break;
-        case 'gold':     pts=5;  color='#ffcc44'; addTime=3; break;
-        case 'dead':     pts=-2; color='#ff6b6b'; break;
+        case 'leaf':pts=1;color='#9fe8c0';break;
+        case 'clover':pts=3;color='#4dcea0';break;
+        case 'fourleaf':pts=10;color='#ffd700';break;
+        case 'gold':pts=5;color='#ffcc44';addTime=3;break;
+        case 'dead':pts=-2;color='#ff6b6b';break;
       }
-      // 콤보
-      if(leaf.type==='dead'){
-        gameCombo=0;comboMultiplier=1;shakeScreen();
-        document.getElementById('comboGlow').classList.remove('active');
-      } else {
-        gameCombo++;
-        comboMultiplier = gameCombo>=5?2:gameCombo>=3?1.5:1;
-        if(gameCombo===3||gameCombo===5) playCatchSound('combo');
-        if(gameCombo>gameMaxCombo) gameMaxCombo=gameCombo;
-        if(gameCombo>=5) document.getElementById('comboGlow').classList.add('active');
-        else document.getElementById('comboGlow').classList.remove('active');
-      }
+      if(leaf.type==='dead'){gameCombo=0;comboMultiplier=1;shakeScreen();document.getElementById('comboGlow').classList.remove('active');}
+      else{gameCombo++;comboMultiplier=gameCombo>=5?2:gameCombo>=3?1.5:1;if(gameCombo===3||gameCombo===5)playCatchSound('combo');if(gameCombo>gameMaxCombo)gameMaxCombo=gameCombo;if(gameCombo>=5)document.getElementById('comboGlow').classList.add('active');else document.getElementById('comboGlow').classList.remove('active');}
       const finalPts=leaf.type==='dead'?pts:Math.round(pts*comboMultiplier);
       gameScore=Math.max(0,gameScore+finalPts);
-      if(leaf.type!=='dead') gameCaught++;
-      if(addTime>0) gameTimer=Math.min(gameTimer+addTime,99);
-
+      if(leaf.type!=='dead')gameCaught++;
+      if(addTime>0)gameTimer=Math.min(gameTimer+addTime,99);
       addCatchParticles(leaf.x,leaf.y,leaf.type);
       addScorePopup(leaf.x,leaf.y-30,finalPts>0?`+${finalPts}`:`${finalPts}`,color);
       playCatchSound(leaf.type);
@@ -702,51 +529,29 @@ function updateComboHUD(){
 }
 
 // ═══════════════════════════════════
-//  카드 호버 (실제 경과시간)
+//  카드 호버
 // ═══════════════════════════════════
 const HOVER_DURATION=1500;
 let cardHoverStart=[0,0,0];
-
 function checkCardHover(hx,hy){
   const now=Date.now();
   for(let i=0;i<3;i++){
     const rect=document.getElementById(`card${i}`).getBoundingClientRect();
     const inside=hx>=rect.left&&hx<=rect.right&&hy>=rect.top&&hy<=rect.bottom;
-    if(inside){
-      if(!cardHoverStart[i]) cardHoverStart[i]=now;
-      const elapsed=now-cardHoverStart[i];
-      document.getElementById(`bar${i}`).style.width=Math.min(100,(elapsed/HOVER_DURATION)*100)+'%';
-      document.getElementById(`card${i}`).classList.add('hovered');
-      if(elapsed>=HOVER_DURATION){selectDifficulty(i);return;}
-    } else {
-      cardHoverStart[i]=0;
-      document.getElementById(`bar${i}`).style.width='0%';
-      document.getElementById(`card${i}`).classList.remove('hovered');
-    }
+    if(inside){if(!cardHoverStart[i])cardHoverStart[i]=now;const elapsed=now-cardHoverStart[i];document.getElementById(`bar${i}`).style.width=Math.min(100,(elapsed/HOVER_DURATION)*100)+'%';document.getElementById(`card${i}`).classList.add('hovered');if(elapsed>=HOVER_DURATION){selectDifficulty(i);return;}}
+    else{cardHoverStart[i]=0;document.getElementById(`bar${i}`).style.width='0%';document.getElementById(`card${i}`).classList.remove('hovered');}
   }
 }
-
-function selectDifficulty(level){
-  selectedLevel=level;
-  cardHoverStart=[0,0,0];
-  for(let i=0;i<3;i++){
-    document.getElementById(`bar${i}`).style.width='0%';
-    document.getElementById(`card${i}`).classList.remove('hovered');
-  }
-  playCatchSound('select');
-  startGame();
-}
+function selectDifficulty(level){selectedLevel=level;cardHoverStart=[0,0,0];for(let i=0;i<3;i++){document.getElementById(`bar${i}`).style.width='0%';document.getElementById(`card${i}`).classList.remove('hovered');}playCatchSound('select');startGame();}
 
 // ═══════════════════════════════════
 //  씬 전환
 // ═══════════════════════════════════
 function goSelectDiff(){
-  for(let i=0;i<3;i++) document.getElementById(`best${i}`).textContent=`최고: ${records.level[i].best}점`;
+  for(let i=0;i<3;i++)document.getElementById(`best${i}`).textContent=`최고: ${records.level[i].best}점`;
   cardHoverStart=[0,0,0];
   const last=records.lastLevel,rec=records.level;
-  document.getElementById('diffRecord').textContent=
-    rec[last].plays>0?`지난 기록: ${['새싹','클로버','네잎클로버'][last]} ${rec[last].best}점`
-                     :'처음 도전이에요! 레벨을 골라봐요 👇';
+  document.getElementById('diffRecord').textContent=rec[last].plays>0?`지난 기록: ${['새싹','클로버','네잎클로버'][last]} ${rec[last].best}점`:'처음 도전이에요! 레벨을 골라봐요 👇';
   showScene(SCENE.DIFF);
 }
 
@@ -757,8 +562,7 @@ function startGame(){
   if(gameTimerInterval){clearInterval(gameTimerInterval);gameTimerInterval=null;}
   leaves=[];particles=[];scorePopups=[];handGlows=[];
   gameScore=0;gameCaught=0;gameCombo=0;gameMaxCombo=0;
-  gameTimer=60;comboMultiplier=1;frameCount=1;
-  shakeX=0;shakeY=0;shakeDecay=0;
+  gameTimer=60;comboMultiplier=1;frameCount=1;shakeX=0;shakeY=0;shakeDecay=0;
   document.getElementById('hudScore').textContent='0';
   document.getElementById('hudTimer').textContent='60';
   document.getElementById('hudCombo').textContent='0';
@@ -766,34 +570,27 @@ function startGame(){
   document.getElementById('noHandMsg').style.display='none';
   document.getElementById('hudTimer').classList.remove('danger');
   document.getElementById('comboGlow').classList.remove('active');
-  gameRunning=true;
-  showScene(SCENE.GAME);
+  gameRunning=true;showScene(SCENE.GAME);
 
   gameTimerInterval=setInterval(()=>{
-    if(!gameRunning) return;
-    gameTimer--;
-    const el=document.getElementById('hudTimer');
-    el.textContent=gameTimer;
-    if(gameTimer<=10) el.classList.add('danger');
-    if(gameTimer<=0) endGame();
+    if(!gameRunning)return;gameTimer--;
+    const el=document.getElementById('hudTimer');el.textContent=gameTimer;
+    if(gameTimer<=10)el.classList.add('danger');
+    if(gameTimer<=0)endGame();
   },1000);
 
-  records.level[selectedLevel].plays++;
-  records.lastLevel=selectedLevel;
-  saveRecords();
+  records.level[selectedLevel].plays++;records.lastLevel=selectedLevel;saveRecords();
 }
 
 function endGame(){
-  if(!gameRunning) return;
-  gameRunning=false;
+  if(!gameRunning)return;gameRunning=false;
   if(gameTimerInterval){clearInterval(gameTimerInterval);gameTimerInterval=null;}
   document.getElementById('hudTimer').classList.remove('danger');
   document.getElementById('comboGlow').classList.remove('active');
   playCatchSound('timeup');
 
   const isNew=gameScore>records.level[selectedLevel].best;
-  if(isNew) records.level[selectedLevel].best=gameScore;
-  saveRecords();
+  if(isNew)records.level[selectedLevel].best=gameScore;saveRecords();
 
   document.getElementById('rScore').textContent=gameScore;
   document.getElementById('rCaught').textContent=gameCaught;
@@ -803,46 +600,36 @@ function endGame(){
 
   const names=['새싹','클로버','네잎클로버'];
   let advice;
-  if(gameScore>=80){
-    advice=`대단해요! ${selectedLevel<2?`다음 레벨 <b>${names[selectedLevel+1]}</b>에 도전해볼까요? 👆`:'최고 레벨 달성! 완전 대단해요! 🏆'}`;
-  } else if(gameScore>=40){
-    advice='잘했어요! 한 번 더 하면 더 잘할 수 있을 거예요! 🔄';
-  } else {
-    advice='조금 더 연습해봐요! 천천히 해도 괜찮아요 💚';
-  }
+  if(gameScore>=80)advice=`대단해요! ${selectedLevel<2?`다음 레벨 <b>${names[selectedLevel+1]}</b>에 도전해볼까요? 👆`:'최고 레벨 달성! 완전 대단해요! 🏆'}`;
+  else if(gameScore>=40)advice='잘했어요! 한 번 더 하면 더 잘할 수 있을 거예요! 🔄';
+  else advice='조금 더 연습해봐요! 천천히 해도 괜찮아요 💚';
   document.getElementById('adviceBox').innerHTML=advice;
-  document.getElementById('resultTitle').textContent=
-    gameScore>=80?'🎉 훌륭해요!':gameScore>=40?'😊 잘했어요!':'💪 조금 더 해봐요!';
-
+  document.getElementById('resultTitle').textContent=gameScore>=80?'🎉 훌륭해요!':gameScore>=40?'😊 잘했어요!':'💪 조금 더 해봐요!';
   setTimeout(()=>showScene(SCENE.RESULT),800);
 }
 
 function replayGame(){startGame();}
 
 // ═══════════════════════════════════
-//  게임 루프
+//  게임 루프 (투명 캔버스 — 카메라가 배경)
 // ═══════════════════════════════════
 function gameLoop(){
   requestAnimationFrame(gameLoop);
+  // ★ 캔버스를 투명하게 클리어 — 카메라 영상이 비쳐보임 ★
   ctx.clearRect(0,0,W,H);
   ctx.save();
   applyShake();
-  drawBg();
 
   if(currentScene===SCENE.GAME){
     if(gameRunning){
       frameCount++;
       const cfg=LEVEL_CONFIG[selectedLevel];
-      if(leaves.length<cfg.maxLeaves && frameCount%cfg.spawnRate===0) spawnLeaf();
-      if(leaves.length<cfg.maxLeaves && Math.random()<0.012) spawnLeaf();
+      if(leaves.length<cfg.maxLeaves&&frameCount%cfg.spawnRate===0)spawnLeaf();
+      if(leaves.length<cfg.maxLeaves&&Math.random()<0.012)spawnLeaf();
     }
     const now=Date.now()/1000;
     leaves=leaves.filter(l=>l.y<H+l.size+60);
-    leaves.forEach(l=>{
-      l.x+=Math.sin(now*1.5+l.swingPhase)*l.swingAmp;
-      l.y+=l.speed;l.rotation+=l.rotSpeed;
-      drawLeaf(l);
-    });
+    leaves.forEach(l=>{l.x+=Math.sin(now*1.5+l.swingPhase)*l.swingAmp;l.y+=l.speed;l.rotation+=l.rotSpeed;drawLeaf(l);});
     updateAndDrawParticles();
     drawHandCursor();
   }
@@ -855,18 +642,12 @@ function gameLoop(){
 window.addEventListener('load',()=>{
   showScene(SCENE.START);
   gameLoop();
-
   let pollCount=0;
   const pollMP=setInterval(()=>{
     pollCount++;
     if(typeof Hands!=='undefined'){clearInterval(pollMP);initMediaPipe();}
-    else if(pollCount>80){
-      clearInterval(pollMP);
-      // MediaPipe 로드 실패 → 터치 전용 모드
-      const ov=document.getElementById('loadingOverlay');
-      ov.classList.add('fade-out');
-      setTimeout(()=>{ov.style.display='none';},500);
-      startGlitter();
+    else if(pollCount>80){clearInterval(pollMP);
+      const ov=document.getElementById('loadingOverlay');ov.classList.add('fade-out');setTimeout(()=>{ov.style.display='none';},500);
       document.getElementById('handHint').textContent='✋ 화면을 터치해서 시작해요!';
     }
   },100);
