@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🍀 잎을 잡아라!</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  /* hidden: display:none 대신 opacity+pointer-events로 처리 → transition 유지 */
+  .hidden { opacity: 0 !important; pointer-events: none !important; }
+
+  @import url('https://fonts.googleapis.com/css2?family=Jua&family=Nanum+Gothic:wght@400;700;800&display=swap');
+
+  body {
+    font-family: 'Jua', sans-serif;
+    background: #0d2e1a;
+    color: #f0ead6;
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+    position: relative;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+  }
+
+  #gameCanvas {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 1;
+  }
+
+  /* MediaPipe용 숨김 비디오 — 화면 밖으로 */
+  #videoEl {
+    position: fixed;
+    top: -9999px; left: -9999px;
+    width: 1px; height: 1px;
+    pointer-events: none;
+  }
+
+  /* ── 씬 공통 ── */
+  .scene {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.5s ease;
+  }
+
+  /* ── 씬1: 시작 ── */
+  #sceneStart {
+    background: linear-gradient(180deg, #0a2010 0%, #153d22 40%, #1a5c3a 70%, #1b6b6b 100%);
+  }
+  .title-wrap {
+    text-align: center;
+    margin-bottom: 28px;
+    animation: floatTitle 3s ease-in-out infinite;
+  }
+  .title-main { font-size: clamp(44px, 9vw, 76px); color: #f0ead6; text-shadow: 0 0 40px rgba(100,220,120,0.5); line-height: 1.1; }
+  .title-sub  { font-size: clamp(16px, 3.5vw, 26px); color: #9fe8c0; margin-top: 8px; }
+  @keyframes floatTitle {
+    0%,100% { transform: translateY(0); }
+    50%     { transform: translateY(-10px); }
+  }
+
+  .cam-wrap {
+    width: min(200px, 42vw); height: min(200px, 42vw);
+    border-radius: 50%; overflow: hidden;
+    border: 4px solid #4dcea0;
+    box-shadow: 0 0 0 8px rgba(77,206,160,0.15), 0 0 50px rgba(77,206,160,0.3);
+    margin-bottom: 20px; background: #0d2e1a;
+  }
+  #camPreview { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+
+  .hand-hint {
+    font-size: clamp(16px, 3.5vw, 24px); color: #c8f0dc;
+    text-align: center; padding: 0 20px;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
+
+  .hand-detected-msg {
+    font-size: clamp(18px, 3.5vw, 26px); color: #4dcea0;
+    text-align: center; margin-top: 10px;
+    transition: opacity 0.3s;
+  }
+
+  /* ── 씬2: 난이도 선택 ── */
+  #sceneDifficulty {
+    background: linear-gradient(180deg, #0a2010 0%, #153d22 50%, #1b6b6b 100%);
+    padding: 20px;
+  }
+  .diff-title  { font-size: clamp(24px, 5.5vw, 38px); color: #f0ead6; text-align: center; margin-bottom: 6px; }
+  .diff-record { font-size: clamp(13px, 2.8vw, 19px); color: #9fe8c0; text-align: center; margin-bottom: 22px; font-family: 'Nanum Gothic', sans-serif; }
+  .diff-cards  { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; width: 100%; max-width: 800px; }
+
+  .diff-card {
+    background: rgba(255,255,255,0.07);
+    border: 3px solid rgba(77,206,160,0.3);
+    border-radius: 24px; padding: 22px 18px;
+    width: min(195px, 27vw); min-width: 130px;
+    text-align: center; position: relative; overflow: hidden;
+    transition: border-color 0.2s, background 0.2s, transform 0.2s, box-shadow 0.2s;
+  }
+  .diff-card.hovered {
+    border-color: #4dcea0; background: rgba(77,206,160,0.15);
+    transform: translateY(-6px) scale(1.03); box-shadow: 0 12px 40px rgba(77,206,160,0.3);
+  }
+  .diff-card .icon { font-size: clamp(34px, 7vw, 50px); margin-bottom: 8px; display: block; }
+  .diff-card .name { font-size: clamp(17px, 3.8vw, 23px); color: #f0ead6; margin-bottom: 6px; }
+  .diff-card .desc { font-size: clamp(11px, 2.3vw, 15px); color: #9fe8c0; font-family: 'Nanum Gothic', sans-serif; line-height: 1.4; }
+  .diff-card .best { font-size: clamp(11px, 1.9vw, 14px); color: #4dcea0; margin-top: 8px; font-family: 'Nanum Gothic', sans-serif; font-weight: 700; }
+  .hover-bar { position: absolute; bottom: 0; left: 0; height: 5px; background: #4dcea0; width: 0%; border-radius: 0 0 24px 24px; }
+
+  /* ── 씬3: 게임 HUD ── */
+  #sceneGame { background: transparent; pointer-events: none; }
+  .hud {
+    position: absolute; top: 0; left: 0; right: 0;
+    display: flex; justify-content: space-between; align-items: flex-start;
+    padding: 14px 18px;
+    background: linear-gradient(180deg, rgba(10,32,16,0.88) 0%, transparent 100%);
+    z-index: 20; pointer-events: auto;
+  }
+  .hud-block { text-align: center; min-width: 75px; }
+  .hud-label { font-size: clamp(10px, 1.8vw, 13px); color: #9fe8c0; font-family: 'Nanum Gothic', sans-serif; letter-spacing: 1px; }
+  .hud-value { font-size: clamp(26px, 5.5vw, 42px); color: #f0ead6; line-height: 1; }
+  .hud-value.danger { color: #ff6b6b; animation: timerDanger 0.5s ease-in-out infinite; }
+  @keyframes timerDanger { 0%,100%{transform:scale(1);} 50%{transform:scale(1.1);} }
+  .combo-badge {
+    background: rgba(255,200,50,0.2); border: 2px solid #ffc832;
+    border-radius: 12px; padding: 3px 9px;
+    font-size: clamp(11px, 2.3vw, 17px); color: #ffc832;
+    margin-top: 3px; display: none;
+  }
+  .combo-badge.show { display: block; }
+
+  /* PIP */
+  #pipCam {
+    position: absolute; bottom: 18px; left: 18px;
+    width: min(110px, 18vw); height: min(110px, 18vw);
+    border-radius: 50%; overflow: hidden;
+    border: 3px solid rgba(77,206,160,0.5);
+    opacity: 0.55; z-index: 20;
+  }
+  #pipCamVideo { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+
+  /* 음악 버튼 */
+  #musicBtn {
+    position: fixed; top: 14px; right: 18px;
+    background: rgba(255,255,255,0.1); border: 2px solid rgba(77,206,160,0.4);
+    border-radius: 50%; width: 46px; height: 46px;
+    font-size: 20px; cursor: pointer; z-index: 100;
+    display: flex; align-items: center; justify-content: center;
+    color: #f0ead6; transition: background 0.2s;
+  }
+  #musicBtn:active { background: rgba(77,206,160,0.3); }
+
+  /* 손 없음 */
+  #noHandMsg {
+    position: absolute; bottom: 150px; left: 50%;
+    transform: translateX(-50%);
+    font-size: clamp(15px, 2.8vw, 21px); color: rgba(255,255,255,0.75);
+    background: rgba(0,0,0,0.45); padding: 8px 20px;
+    border-radius: 20px; z-index: 20; display: none;
+    pointer-events: none; white-space: nowrap;
+  }
+
+  /* ── 씬4: 결과 ── */
+  #sceneResult {
+    background: linear-gradient(180deg, #0a2010 0%, #153d22 50%, #1b6b6b 100%);
+    padding: 20px;
+  }
+  .result-title { font-size: clamp(26px, 6.5vw, 50px); color: #f0ead6; text-align: center; margin-bottom: 6px; }
+  .new-record { font-size: clamp(19px, 4.5vw, 34px); color: #ffc832; text-align: center; margin-bottom: 14px; animation: bounce 0.6s ease infinite alternate; display: none; }
+  .new-record.show { display: block; }
+  @keyframes bounce { from{transform:scale(1);} to{transform:scale(1.08);} }
+
+  .result-stats { display: flex; gap: 14px; justify-content: center; margin-bottom: 20px; flex-wrap: wrap; }
+  .stat-box { background: rgba(255,255,255,0.07); border: 2px solid rgba(77,206,160,0.3); border-radius: 16px; padding: 14px 22px; text-align: center; min-width: 105px; }
+  .stat-box .s-label { font-size: clamp(11px, 2.3vw, 15px); color: #9fe8c0; font-family: 'Nanum Gothic', sans-serif; }
+  .stat-box .s-val   { font-size: clamp(26px, 5.5vw, 42px); color: #f0ead6; }
+
+  .advice-box { font-size: clamp(16px, 3.8vw, 24px); color: #c8f0dc; text-align: center; padding: 14px 22px; background: rgba(77,206,160,0.1); border-radius: 16px; margin-bottom: 24px; max-width: 580px; line-height: 1.45; }
+  .result-btns { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
+  .rbtn { font-family: 'Jua', sans-serif; font-size: clamp(17px, 3.8vw, 23px); padding: 13px 30px; border-radius: 100px; border: none; cursor: pointer; transition: transform 0.15s; }
+  .rbtn.primary   { background: #4dcea0; color: #0a2010; }
+  .rbtn.secondary { background: rgba(255,255,255,0.1); border: 2px solid rgba(77,206,160,0.5); color: #f0ead6; }
+  .rbtn:active { transform: scale(0.96); }
+
+  /* 로딩 */
+  #loadingOverlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: #0a2010; z-index: 999;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px;
+    transition: opacity 0.5s;
+  }
+  #loadingOverlay.fade-out { opacity: 0; pointer-events: none; }
+  .loading-icon { font-size: 58px; animation: spin 2s linear infinite; }
+  @keyframes spin { from{transform:rotate(0deg);} to{transform:rotate(360deg);} }
+  .loading-text { font-size: clamp(16px, 3.5vw, 24px); color: #9fe8c0; text-align: center; padding: 0 20px; }
+</style>
+</head>
+<body>
+
+<div id="loadingOverlay">
+  <div class="loading-icon">🍀</div>
+  <div class="loading-text" id="loadingText">카메라와 손 인식을 준비하는 중이에요...</div>
+</div>
+
+<video id="videoEl" playsinline autoplay muted></video>
+<canvas id="gameCanvas"></canvas>
+<button id="musicBtn" onclick="toggleMusic()">🔇</button>
+
+<!-- 씬1: 시작 -->
+<div class="scene" id="sceneStart">
+  <div class="title-wrap">
+    <div class="title-main">🍀 잎을 잡아라!</div>
+    <div class="title-sub">손을 올려서 게임을 시작해요</div>
+  </div>
+  <div class="cam-wrap">
+    <video id="camPreview" playsinline autoplay muted></video>
+  </div>
+  <div class="hand-hint" id="handHint">✋ 손을 카메라 앞에 올려주세요</div>
+  <div class="hand-detected-msg hidden" id="handDetectedMsg">👋 손 인식됨! 잠시 후 시작...</div>
+</div>
+
+<!-- 씬2: 난이도 -->
+<div class="scene hidden" id="sceneDifficulty">
+  <div class="diff-title">레벨을 선택해요!</div>
+  <div class="diff-record" id="diffRecord"></div>
+  <div class="diff-cards">
+    <div class="diff-card" id="card0">
+      <span class="icon">🌱</span>
+      <div class="name">새싹</div>
+      <div class="desc">잎이 크고 느려요<br>천천히 잡아봐요</div>
+      <div class="best" id="best0">최고: 0점</div>
+      <div class="hover-bar" id="bar0"></div>
+    </div>
+    <div class="diff-card" id="card1">
+      <span class="icon">🍃</span>
+      <div class="name">클로버</div>
+      <div class="desc">보통 속도예요<br>조금 더 빠르게!</div>
+      <div class="best" id="best1">최고: 0점</div>
+      <div class="hover-bar" id="bar1"></div>
+    </div>
+    <div class="diff-card" id="card2">
+      <span class="icon">⚡</span>
+      <div class="name">네잎클로버</div>
+      <div class="desc">빠르고 작아요<br>집중해서 잡아요!</div>
+      <div class="best" id="best2">최고: 0점</div>
+      <div class="hover-bar" id="bar2"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 씬3: 게임 -->
+<div class="scene hidden" id="sceneGame">
+  <div class="hud">
+    <div class="hud-block">
+      <div class="hud-label">점수</div>
+      <div class="hud-value" id="hudScore">0</div>
+    </div>
+    <div class="hud-block">
+      <div class="hud-label">남은 시간</div>
+      <div class="hud-value" id="hudTimer">60</div>
+    </div>
+    <div class="hud-block">
+      <div class="hud-label">콤보</div>
+      <div class="hud-value" id="hudCombo">0</div>
+      <div class="combo-badge" id="comboBadge">🔥 콤보!</div>
+    </div>
+  </div>
+  <div id="pipCam">
+    <video id="pipCamVideo" playsinline autoplay muted></video>
+  </div>
+  <div id="noHandMsg">✋ 손을 보여주세요</div>
+</div>
+
+<!-- 씬4: 결과 -->
+<div class="scene hidden" id="sceneResult">
+  <div class="result-title" id="resultTitle">게임 끝!</div>
+  <div class="new-record" id="newRecord">🎉 신기록!</div>
+  <div class="result-stats">
+    <div class="stat-box"><div class="s-label">점수</div><div class="s-val" id="rScore">0</div></div>
+    <div class="stat-box"><div class="s-label">잡은 잎</div><div class="s-val" id="rCaught">0</div></div>
+    <div class="stat-box"><div class="s-label">최고 콤보</div><div class="s-val" id="rCombo">0</div></div>
+  </div>
+  <div class="advice-box" id="adviceBox"></div>
+  <div class="result-btns">
+    <button class="rbtn primary" onclick="replayGame()">🔄 다시 하기</button>
+    <button class="rbtn secondary" onclick="goSelectDiff()">📋 레벨 바꾸기</button>
+  </div>
+</div>
+
+<!-- MediaPipe: 버전 고정 (WASM 안정성) -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/hands.js" crossorigin="anonymous"></script>
+
+<script>
+// ══════════════════════════════════════
+//  캔버스
+// ══════════════════════════════════════
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+let W, H;
+function resizeCanvas() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+// ══════════════════════════════════════
+//  씬
+// ══════════════════════════════════════
+const SCENE = { START:0, DIFF:1, GAME:2, RESULT:3 };
+let currentScene = SCENE.START;
+const sceneEls = ['sceneStart','sceneDifficulty','sceneGame','sceneResult'].map(id => document.getElementById(id));
+function showScene(s) {
+  currentScene = s;
+  sceneEls.forEach((el,i) => i===s ? el.classList.remove('hidden') : el.classList.add('hidden'));
+}
+
+// ══════════════════════════════════════
+//  로컬 기록
+// ══════════════════════════════════════
+const SAVE_KEY = 'catchLeaves_v2';
+function loadRecords() {
+  try { const r = localStorage.getItem(SAVE_KEY); if(r) return JSON.parse(r); } catch(e){}
+  return { level:[{best:0,plays:0},{best:0,plays:0},{best:0,plays:0}], lastLevel:0 };
+}
+let records = loadRecords();
+function saveRecords() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(records)); } catch(e){} }
+
+// ══════════════════════════════════════
+//  레벨 설정
+// ══════════════════════════════════════
+const LEVEL_CONFIG = [
+  { size:75, speed:1.8, maxLeaves:2, hitRadius:75, spawnRate:90 },
+  { size:52, speed:3.5, maxLeaves:4, hitRadius:55, spawnRate:70 },
+  { size:34, speed:6.5, maxLeaves:6, hitRadius:36, spawnRate:55 }
+];
+
+// ══════════════════════════════════════
+//  게임 상태
+// ══════════════════════════════════════
+let selectedLevel=0, gameScore=0, gameCaught=0, gameCombo=0, gameMaxCombo=0;
+let gameTimer=60, gameRunning=false, gameTimerInterval=null, frameCount=1;
+let comboMultiplier=1;
+let leaves=[], particles=[], scorePopups=[], handGlows=[], bgGlitters=[];
+let handX=-1, handY=-1, handVisible=false, noHandTimeout=null;
+let shakeX=0, shakeY=0, shakeDecay=0;
+
+// ══════════════════════════════════════
+//  오디오 (갤탭 AudioContext suspended 대응)
+// ══════════════════════════════════════
+let audioCtx=null, musicOn=false, bgOscNode=null, bgGainNode=null;
+
+function getAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+  if (audioCtx.state==='suspended') audioCtx.resume().catch(()=>{});
+  return audioCtx;
+}
+// 첫 터치로 AudioContext 잠금 해제
+function unlockAudio() { getAudio(); }
+document.addEventListener('touchstart', unlockAudio, {once:true, passive:true});
+document.addEventListener('click',      unlockAudio, {once:true});
+
+function playTone(freq, dur, type='sine', vol=0.32, delay=0) {
+  try {
+    const ac=getAudio(), osc=ac.createOscillator(), gain=ac.createGain();
+    osc.connect(gain); gain.connect(ac.destination);
+    osc.type=type;
+    const t=ac.currentTime+delay;
+    osc.frequency.setValueAtTime(freq,t);
+    gain.gain.setValueAtTime(vol,t);
+    gain.gain.exponentialRampToValueAtTime(0.001,t+dur);
+    osc.start(t); osc.stop(t+dur+0.06);
+  } catch(e){}
+}
+
+function playCatchSound(type) {
+  switch(type) {
+    case 'leaf':     playTone(523,0.12,'sine',0.28); break;
+    case 'clover':   playTone(659,0.1,'sine',0.32); playTone(784,0.1,'sine',0.28,0.08); break;
+    case 'fourleaf': [523,659,784,1047].forEach((f,i)=>playTone(f,0.12,'sine',0.36,i*0.06)); break;
+    case 'gold':     [880,1047,1319].forEach((f,i)=>playTone(f,0.15,'sine',0.3,i*0.05)); break;
+    case 'dead':     playTone(150,0.3,'sawtooth',0.2); break;
+    case 'combo':    [523,659,784,1047].forEach((f,i)=>playTone(f,0.2,'triangle',0.26,i*0.07)); break;
+    case 'select':   [660,880].forEach((f,i)=>playTone(f,0.15,'sine',0.26,i*0.07)); break;
+    case 'timeup':   [400,300,200].forEach((f,i)=>playTone(f,0.25,'sawtooth',0.2,i*0.15)); break;
+  }
+}
+
+function startBgMusic() {
+  try {
+    const ac=getAudio();
+    if(bgOscNode){ try{bgOscNode.stop();}catch(e){} bgOscNode=null; }
+    bgGainNode=ac.createGain(); bgGainNode.gain.setValueAtTime(0.04,ac.currentTime); bgGainNode.connect(ac.destination);
+    bgOscNode=ac.createOscillator(); bgOscNode.type='sine'; bgOscNode.frequency.setValueAtTime(80,ac.currentTime);
+    bgOscNode.connect(bgGainNode); bgOscNode.start();
+    musicOn=true; document.getElementById('musicBtn').textContent='🔊';
+  } catch(e){}
+}
+function stopBgMusic() {
+  try{ if(bgOscNode){bgOscNode.stop();bgOscNode=null;} }catch(e){}
+  musicOn=false; document.getElementById('musicBtn').textContent='🔇';
+}
+function toggleMusic() { musicOn ? stopBgMusic() : startBgMusic(); }
+
+// ══════════════════════════════════════
+//  MediaPipe — Camera 헬퍼 제거, 직접 루프
+// ══════════════════════════════════════
+let handsDetector=null, mpProcessing=false;
+let startHandTimeout=null;
+
+function initMediaPipe() {
+  const videoEl = document.getElementById('videoEl');
+
+  handsDetector = new Hands({
+    locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/${f}`
+  });
+  handsDetector.setOptions({
+    maxNumHands:1, modelComplexity:1,
+    minDetectionConfidence:0.5, minTrackingConfidence:0.4
+  });
+  handsDetector.onResults(onHandResults);
+
+  // 단일 getUserMedia — ideal로 요청해서 갤탭 해상도 충돌 방지
+  navigator.mediaDevices.getUserMedia({
+    video:{ facingMode:'user', width:{ideal:640}, height:{ideal:480} },
+    audio:false
+  }).then(stream => {
+    videoEl.srcObject = stream;
+    document.getElementById('camPreview').srcObject   = stream;
+    document.getElementById('pipCamVideo').srcObject  = stream;
+
+    videoEl.onloadedmetadata = () => {
+      videoEl.play().then(() => {
+        // 로딩 페이드아웃
+        const ov = document.getElementById('loadingOverlay');
+        ov.classList.add('fade-out');
+        setTimeout(()=>{ ov.style.display='none'; }, 500);
+
+        startGlitter();
+        requestAnimationFrame(mpLoop); // 수동 전송 루프 시작
+      }).catch(showCameraError);
+    };
+  }).catch(showCameraError);
+}
+
+function showCameraError(err) {
+  console.error('카메라 오류:', err);
+  const ov = document.getElementById('loadingOverlay');
+  ov.style.display='flex'; ov.classList.remove('fade-out');
+  document.getElementById('loadingText').textContent='카메라 권한이 필요해요. 브라우저 설정에서 카메라를 허용해주세요.';
+}
+
+// MediaPipe 전송 루프 (게임 루프와 독립)
+async function mpLoop() {
+  const v = document.getElementById('videoEl');
+  if (!mpProcessing && v.readyState >= 2) {
+    mpProcessing = true;
+    try { await handsDetector.send({image:v}); } catch(e){}
+    mpProcessing = false;
+  }
+  requestAnimationFrame(mpLoop);
+}
+
+function onHandResults(results) {
+  if (!results.multiHandLandmarks || results.multiHandLandmarks.length===0) {
+    handVisible = false;
+
+    if (currentScene===SCENE.START) {
+      document.getElementById('handHint').classList.remove('hidden');
+      document.getElementById('handDetectedMsg').classList.add('hidden');
+      if (startHandTimeout){ clearTimeout(startHandTimeout); startHandTimeout=null; }
+    }
+
+    if (currentScene===SCENE.GAME && gameRunning && !noHandTimeout) {
+      noHandTimeout = setTimeout(()=>{
+        if (!handVisible && currentScene===SCENE.GAME && gameRunning)
+          document.getElementById('noHandMsg').style.display='block';
+        noHandTimeout=null;
+      }, 1500);
+    }
+    return;
+  }
+
+  const lm = results.multiHandLandmarks[0];
+  // 손바닥 중심: landmark 0(손목) + 9(중지 MCP) 평균, 미러링 적용
+  handX = (1 - (lm[0].x+lm[9].x)/2) * W;
+  handY =      ((lm[0].y+lm[9].y)/2) * H;
+  handVisible = true;
+  addHandGlow(handX, handY);
+
+  if (currentScene===SCENE.START) {
+    document.getElementById('handHint').classList.add('hidden');
+    document.getElementById('handDetectedMsg').classList.remove('hidden');
+    if (!startHandTimeout) {
+      startHandTimeout = setTimeout(()=>{ goSelectDiff(); startHandTimeout=null; }, 1500);
+    }
+  }
+
+  if (currentScene===SCENE.DIFF) checkCardHover(handX, handY);
+
+  if (currentScene===SCENE.GAME && gameRunning) {
+    if (noHandTimeout){ clearTimeout(noHandTimeout); noHandTimeout=null; }
+    document.getElementById('noHandMsg').style.display='none';
+    catchLeaves(handX, handY);
+  }
+}
+
+// ══════════════════════════════════════
+//  배경 글리터
+// ══════════════════════════════════════
+function startGlitter() {
+  bgGlitters=[];
+  for(let i=0;i<40;i++) bgGlitters.push({
+    x:Math.random()*W, y:Math.random()*H*0.6,
+    r:Math.random()*2.5+0.5, speed:Math.random()*0.02+0.01, phase:Math.random()*Math.PI*2
+  });
+}
+
+function drawBg() {
+  const grd=ctx.createLinearGradient(0,0,0,H);
+  grd.addColorStop(0,'#0a2010'); grd.addColorStop(0.35,'#153d22');
+  grd.addColorStop(0.65,'#1a5c3a'); grd.addColorStop(1,'#1b6b6b');
+  ctx.fillStyle=grd; ctx.fillRect(0,0,W,H);
+
+  const now=Date.now()/1000;
+  bgGlitters.forEach(g=>{
+    const alpha=0.25+0.55*Math.abs(Math.sin(now*g.speed*10+g.phase));
+    ctx.save(); ctx.globalAlpha=alpha; ctx.fillStyle='#ffffff';
+    ctx.beginPath(); ctx.arc(g.x, g.y+H*0.46, g.r, 0, Math.PI*2); ctx.fill(); ctx.restore();
+  });
+
+  // 나뭇잎 실루엣
+  ctx.save(); ctx.fillStyle='rgba(10,32,16,0.55)';
+  [[W*0.08,-20,115,78,0.3],[W*0.19,12,88,58,-0.2],[W*0.84,-10,108,73,-0.4],[W*0.95,18,78,53,0.3]]
+    .forEach(([cx,cy,rx,ry,rot])=>{
+      ctx.beginPath(); ctx.ellipse(cx,cy,rx,ry,rot,0,Math.PI*2); ctx.fill();
+    });
+  ctx.restore();
+}
+
+// ══════════════════════════════════════
+//  잎 스폰 & 그리기
+// ══════════════════════════════════════
+function spawnLeaf() {
+  const cfg=LEVEL_CONFIG[selectedLevel], r=Math.random();
+  let type = selectedLevel===2&&r<0.10 ? 'dead'
+           : r<0.12 ? 'gold' : r<0.30 ? 'fourleaf' : r<0.55 ? 'clover' : 'leaf';
+  leaves.push({
+    x:Math.random()*(W-80)+40, y:-cfg.size-10,
+    size:cfg.size*(0.85+Math.random()*0.3),
+    speed:cfg.speed*(0.8+Math.random()*0.4),
+    swingPhase:Math.random()*Math.PI*2, swingAmp:1.5+Math.random()*2.5,
+    rotation:Math.random()*Math.PI*2, rotSpeed:(Math.random()-0.5)*0.06,
+    type, sparkleOff:Math.random()*Math.PI*2
+  });
+}
+
+function drawLeaf(leaf) {
+  ctx.save();
+  ctx.translate(leaf.x, leaf.y);
+  ctx.rotate(leaf.rotation);
+  const s=leaf.size;
+  switch(leaf.type) {
+    case 'leaf':     drawSimpleLeaf(s,'#5aaa5a','#3d7a3d'); break;
+    case 'clover':   drawClover(s,'#3dbe6e','#28904f',3); break;
+    case 'fourleaf':
+      drawClover(s,'#2edd88','#1aaa60',4);
+      { const sp=Math.abs(Math.sin(Date.now()/300+leaf.sparkleOff))*0.45;
+        if(sp>0.05){ctx.save();ctx.globalAlpha=sp;drawStar(0,0,s*0.58,6,'#ffd700');ctx.restore();} }
+      break;
+    case 'gold':
+      drawSimpleLeaf(s,'#f5c542','#e0a020');
+      { const gp=0.22+0.16*Math.sin(Date.now()/200+leaf.sparkleOff);
+        ctx.save();ctx.globalAlpha=gp;ctx.fillStyle='#ffe07a';
+        ctx.beginPath();ctx.arc(0,0,s*0.55,0,Math.PI*2);ctx.fill();ctx.restore(); }
+      break;
+    case 'dead': drawSimpleLeaf(s,'#666677','#444455'); break;
+  }
+  ctx.restore();
+}
+
+function drawSimpleLeaf(s, fill, stroke) {
+  // save/restore 안에서 scale+fill+stroke 완료 → path 왜곡 방지
+  ctx.save();
+  ctx.scale(1,1.5);
+  ctx.beginPath(); ctx.arc(0,0,s*0.38,0,Math.PI*2);
+  ctx.fillStyle=fill; ctx.fill();
+  ctx.strokeStyle=stroke; ctx.lineWidth=2; ctx.stroke();
+  ctx.restore();
+  // 잎맥은 scale 밖에서
+  ctx.strokeStyle=stroke; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(0,-s*0.5); ctx.lineTo(0,s*0.5); ctx.stroke();
+}
+
+function drawClover(s, fill, stroke, petals) {
+  const r=s*0.28, d=s*0.18;
+  ctx.fillStyle=fill; ctx.strokeStyle=stroke; ctx.lineWidth=2;
+  for(let i=0;i<petals;i++){
+    const a=(i/petals)*Math.PI*2;
+    ctx.beginPath(); ctx.arc(Math.cos(a)*d,Math.sin(a)*d,r,0,Math.PI*2);
+    ctx.fill(); ctx.stroke();
+  }
+  ctx.strokeStyle=stroke; ctx.lineWidth=3;
+  ctx.beginPath(); ctx.moveTo(0,d); ctx.lineTo(0,s*0.6); ctx.stroke();
+}
+
+function drawStar(cx,cy,r,points,color) {
+  ctx.fillStyle=color; ctx.beginPath();
+  for(let i=0;i<points*2;i++){
+    const angle=(i*Math.PI)/points-Math.PI/2, rad=i%2===0?r:r*0.4;
+    const x=cx+Math.cos(angle)*rad, y=cy+Math.sin(angle)*rad;
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  }
+  ctx.closePath(); ctx.fill();
+}
+
+// ══════════════════════════════════════
+//  파티클
+// ══════════════════════════════════════
+function addHandGlow(x,y) {
+  for(let i=0;i<2;i++) handGlows.push({
+    x:x+(Math.random()-0.5)*28, y:y+(Math.random()-0.5)*28,
+    r:Math.random()*9+4, alpha:0.55,
+    color:`hsl(${140+Math.random()*40},80%,65%)`
+  });
+}
+
+function addCatchParticles(x,y,type) {
+  const colors = type==='fourleaf'?['#2edd88','#ffd700','#ffffff','#a0ffcc']
+               : type==='gold'    ?['#ffd700','#ffaa00','#ffffff','#ffe57a']
+               : type==='dead'    ?['#888899','#aaaaaa','#666677']
+                                  :['#4dcea0','#9fe8c0','#ffffff'];
+  for(let i=0;i<18;i++){
+    const angle=(i/18)*Math.PI*2+Math.random()*0.5, speed=3+Math.random()*6;
+    particles.push({
+      x,y, vx:Math.cos(angle)*speed, vy:Math.sin(angle)*speed-2,
+      r:Math.random()*7+3, color:colors[Math.floor(Math.random()*colors.length)], life:1
+    });
+  }
+}
+
+function addScorePopup(x,y,text,color) {
+  scorePopups.push({x,y,text,color,vy:-2.2,life:1});
+}
+
+function updateAndDrawParticles() {
+  handGlows = handGlows.filter(g=>g.alpha>0.01);
+  handGlows.forEach(g=>{
+    g.alpha*=0.87;
+    ctx.save();ctx.globalAlpha=g.alpha;ctx.fillStyle=g.color;
+    ctx.beginPath();ctx.arc(g.x,g.y,g.r,0,Math.PI*2);ctx.fill();ctx.restore();
+  });
+
+  particles = particles.filter(p=>p.life>0.02);
+  particles.forEach(p=>{
+    p.x+=p.vx; p.y+=p.vy; p.vy+=0.22; p.vx*=0.95; p.life*=0.91;
+    ctx.save();ctx.globalAlpha=p.life;ctx.fillStyle=p.color;
+    ctx.beginPath();ctx.arc(p.x,p.y,Math.max(0.5,p.r*p.life),0,Math.PI*2);ctx.fill();ctx.restore();
+  });
+
+  scorePopups = scorePopups.filter(s=>s.life>0.02);
+  scorePopups.forEach(s=>{
+    s.y+=s.vy; s.life*=0.93;
+    ctx.save();ctx.globalAlpha=s.life;
+    ctx.font=`bold ${Math.max(20,Math.round(28*s.life))}px 'Jua',sans-serif`;
+    ctx.fillStyle=s.color;ctx.textAlign='center';
+    ctx.fillText(s.text,s.x,s.y);ctx.restore();
+  });
+}
+
+// ══════════════════════════════════════
+//  화면 흔들림
+// ══════════════════════════════════════
+function shakeScreen() { shakeX=(Math.random()-0.5)*16; shakeY=(Math.random()-0.5)*16; shakeDecay=0.82; }
+function applyShake() {
+  if(Math.abs(shakeX)>0.5||Math.abs(shakeY)>0.5){
+    ctx.translate(shakeX,shakeY); shakeX*=shakeDecay; shakeY*=shakeDecay;
+  } else { shakeX=0; shakeY=0; }
+}
+
+// ══════════════════════════════════════
+//  손 커서
+// ══════════════════════════════════════
+function drawHandCursor() {
+  if(!handVisible) return;
+  const pulse=0.85+0.15*Math.sin(Date.now()/150);
+  const r=LEVEL_CONFIG[selectedLevel].hitRadius*pulse;
+  ctx.save();
+  ctx.strokeStyle='rgba(77,206,160,0.6)'; ctx.lineWidth=3;
+  ctx.beginPath(); ctx.arc(handX,handY,r,0,Math.PI*2); ctx.stroke();
+  ctx.strokeStyle='rgba(255,255,255,0.25)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.arc(handX,handY,r*0.45,0,Math.PI*2); ctx.stroke();
+  ctx.restore();
+}
+
+// ══════════════════════════════════════
+//  잡기 판정
+// ══════════════════════════════════════
+function catchLeaves(hx,hy) {
+  const hitR=LEVEL_CONFIG[selectedLevel].hitRadius;
+  leaves = leaves.filter(leaf=>{
+    const dx=leaf.x-hx, dy=leaf.y-hy;
+    if(Math.sqrt(dx*dx+dy*dy) < hitR+leaf.size*0.45){
+      let pts=0, color='#f0ead6', addTime=0;
+      switch(leaf.type){
+        case 'leaf':     pts=1;  color='#9fe8c0'; break;
+        case 'clover':   pts=3;  color='#4dcea0'; break;
+        case 'fourleaf': pts=10; color='#ffd700'; break;
+        case 'gold':     pts=5;  color='#ffcc44'; addTime=3; break;
+        case 'dead':     pts=-2; color='#ff6b6b'; break;
+      }
+      if(leaf.type==='dead'){
+        gameCombo=0; comboMultiplier=1; shakeScreen();
+      } else {
+        gameCombo++;
+        comboMultiplier=gameCombo>=5?2:gameCombo>=3?1.5:1;
+        if(gameCombo===3||gameCombo===5) playCatchSound('combo');
+        if(gameCombo>gameMaxCombo) gameMaxCombo=gameCombo;
+      }
+      const finalPts=leaf.type==='dead'?pts:Math.round(pts*comboMultiplier);
+      gameScore=Math.max(0,gameScore+finalPts);
+      if(leaf.type!=='dead') gameCaught++;
+      if(addTime>0) gameTimer=Math.min(gameTimer+addTime,99);
+
+      addCatchParticles(leaf.x,leaf.y,leaf.type);
+      addScorePopup(leaf.x,leaf.y-30, finalPts>0?`+${finalPts}`:`${finalPts}`, color);
+      playCatchSound(leaf.type);
+      document.getElementById('hudScore').textContent=gameScore;
+      updateComboHUD();
+      return false;
+    }
+    return true;
+  });
+}
+
+function updateComboHUD() {
+  document.getElementById('hudCombo').textContent=gameCombo;
+  const badge=document.getElementById('comboBadge');
+  if(gameCombo>=3){ badge.classList.add('show'); badge.textContent=gameCombo>=5?'🔥 x2 콤보!':'🔥 x1.5 콤보!'; }
+  else badge.classList.remove('show');
+}
+
+// ══════════════════════════════════════
+//  카드 호버 (실제 경과시간 기반)
+// ══════════════════════════════════════
+const HOVER_DURATION=1500;
+let cardHoverStart=[0,0,0];
+
+function checkCardHover(hx,hy) {
+  const now=Date.now();
+  for(let i=0;i<3;i++){
+    const rect=document.getElementById(`card${i}`).getBoundingClientRect();
+    const inside=hx>=rect.left&&hx<=rect.right&&hy>=rect.top&&hy<=rect.bottom;
+    if(inside){
+      if(!cardHoverStart[i]) cardHoverStart[i]=now;
+      const elapsed=now-cardHoverStart[i];
+      document.getElementById(`bar${i}`).style.width=Math.min(100,(elapsed/HOVER_DURATION)*100)+'%';
+      document.getElementById(`card${i}`).classList.add('hovered');
+      if(elapsed>=HOVER_DURATION){ selectDifficulty(i); return; }
+    } else {
+      cardHoverStart[i]=0;
+      document.getElementById(`bar${i}`).style.width='0%';
+      document.getElementById(`card${i}`).classList.remove('hovered');
+    }
+  }
+}
+
+function selectDifficulty(level) {
+  selectedLevel=level;
+  cardHoverStart=[0,0,0];
+  for(let i=0;i<3;i++){
+    document.getElementById(`bar${i}`).style.width='0%';
+    document.getElementById(`card${i}`).classList.remove('hovered');
+  }
+  playCatchSound('select');
+  startGame();
+}
+
+// ══════════════════════════════════════
+//  씬 전환
+// ══════════════════════════════════════
+function goSelectDiff() {
+  for(let i=0;i<3;i++) document.getElementById(`best${i}`).textContent=`최고: ${records.level[i].best}점`;
+  cardHoverStart=[0,0,0];
+  const last=records.lastLevel, rec=records.level;
+  document.getElementById('diffRecord').textContent=
+    rec[last].plays>0 ? `지난 기록: ${['새싹','클로버','네잎클로버'][last]} ${rec[last].best}점`
+                      : '처음 도전이에요! 레벨을 골라봐요 👇';
+  showScene(SCENE.DIFF);
+}
+
+// ══════════════════════════════════════
+//  게임 시작 / 종료
+// ══════════════════════════════════════
+function startGame() {
+  if(gameTimerInterval){ clearInterval(gameTimerInterval); gameTimerInterval=null; }
+  leaves=[]; particles=[]; scorePopups=[]; handGlows=[];
+  gameScore=0; gameCaught=0; gameCombo=0; gameMaxCombo=0;
+  gameTimer=60; comboMultiplier=1; frameCount=1;
+  shakeX=0; shakeY=0; shakeDecay=0;
+  document.getElementById('hudScore').textContent='0';
+  document.getElementById('hudTimer').textContent='60';
+  document.getElementById('hudCombo').textContent='0';
+  document.getElementById('comboBadge').classList.remove('show');
+  document.getElementById('noHandMsg').style.display='none';
+  document.getElementById('hudTimer').classList.remove('danger');
+  gameRunning=true;
+  showScene(SCENE.GAME);
+
+  gameTimerInterval=setInterval(()=>{
+    if(!gameRunning) return;
+    gameTimer--;
+    const el=document.getElementById('hudTimer');
+    el.textContent=gameTimer;
+    if(gameTimer<=10) el.classList.add('danger');
+    if(gameTimer<=0) endGame();
+  },1000);
+
+  records.level[selectedLevel].plays++;
+  records.lastLevel=selectedLevel;
+  saveRecords();
+}
+
+function endGame() {
+  if(!gameRunning) return;
+  gameRunning=false;
+  if(gameTimerInterval){ clearInterval(gameTimerInterval); gameTimerInterval=null; }
+  document.getElementById('hudTimer').classList.remove('danger');
+  playCatchSound('timeup');
+
+  const isNew=gameScore>records.level[selectedLevel].best;
+  if(isNew) records.level[selectedLevel].best=gameScore;
+  saveRecords();
+
+  document.getElementById('rScore').textContent=gameScore;
+  document.getElementById('rCaught').textContent=gameCaught;
+  document.getElementById('rCombo').textContent=gameMaxCombo;
+  const nr=document.getElementById('newRecord');
+  isNew&&gameScore>0 ? nr.classList.add('show') : nr.classList.remove('show');
+
+  const names=['새싹','클로버','네잎클로버'];
+  let advice = gameScore>=80
+    ? `대단해요! ${selectedLevel<2?`다음 레벨 <b>${names[selectedLevel+1]}</b>에 도전해볼까요? 👆`:'최고 레벨 달성! 완전 대단해요! 🏆'}`
+    : gameScore>=40 ? '잘했어요! 한 번 더 하면 더 잘할 수 있을 거예요! 🔄'
+                    : '괜찮아요! 천천히 해도 돼요. 같이 다시 해봐요 💚';
+  document.getElementById('adviceBox').innerHTML=advice;
+  document.getElementById('resultTitle').textContent=
+    gameScore>=80?'🎉 훌륭해요!':gameScore>=40?'😊 잘했어요!':'💪 조금 더 해봐요!';
+
+  setTimeout(()=>showScene(SCENE.RESULT),800);
+}
+
+function replayGame() { startGame(); }
+
+// ══════════════════════════════════════
+//  게임 루프
+// ══════════════════════════════════════
+function gameLoop() {
+  requestAnimationFrame(gameLoop);
+  ctx.clearRect(0,0,W,H);
+  ctx.save();
+  applyShake();
+  drawBg();
+
+  if(currentScene===SCENE.GAME){
+    if(gameRunning){
+      frameCount++;
+      const cfg=LEVEL_CONFIG[selectedLevel];
+      if(leaves.length<cfg.maxLeaves && frameCount%cfg.spawnRate===0) spawnLeaf();
+      if(leaves.length<cfg.maxLeaves && Math.random()<0.01) spawnLeaf();
+    }
+
+    const now=Date.now()/1000;
+    leaves=leaves.filter(l=>l.y<H+l.size+60);
+    leaves.forEach(l=>{
+      l.x+=Math.sin(now*1.5+l.swingPhase)*l.swingAmp;
+      l.y+=l.speed; l.rotation+=l.rotSpeed;
+      drawLeaf(l);
+    });
+
+    updateAndDrawParticles();
+    drawHandCursor();
+  }
+
+  ctx.restore();
+}
+
+// ══════════════════════════════════════
+//  초기화: Hands 클래스 로드 완료 폴링
+// ══════════════════════════════════════
+window.addEventListener('load', ()=>{
+  showScene(SCENE.START);
+  gameLoop();
+
+  let pollCount=0;
+  const pollMP=setInterval(()=>{
+    pollCount++;
+    if(typeof Hands!=='undefined'){
+      clearInterval(pollMP);
+      initMediaPipe();
+    } else if(pollCount>80){
+      clearInterval(pollMP);
+      document.getElementById('loadingText').textContent='네트워크 연결을 확인하고 페이지를 새로고침해 주세요.';
+    }
+  },100);
+});
+</script>
+</body>
+</html>
